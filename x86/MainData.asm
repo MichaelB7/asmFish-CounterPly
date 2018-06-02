@@ -38,6 +38,7 @@ szUciResponse:
 szGreeting:
     db VERSION_PRE
     db VERSION_OS
+    db 'CP'
     db '_'
     BuildTimeData
     db '_'
