@@ -43,6 +43,10 @@ szGreeting:
     BuildTimeData
     db '_'
     db VERSION_POST
+  if USE_MATEFINDER = 1
+    db '_'
+    db 'mf'
+  end if
     NewLineData
 szGreetingEnd:
     db 'id author TypingALot'

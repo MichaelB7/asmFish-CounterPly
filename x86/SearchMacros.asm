@@ -245,7 +245,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		mov   dword [.evalu], eax
 		mov   dword[rbx+State.staticEval], eax
 		mov   rcx, qword[rbx+State.checkersBB]
-		mov   byte[.improving],	1
+		mov   byte[.improving],	0
 		test   rcx, rcx
 		jnz   .moves_loop
 		mov   edx, dword[rbx-1*sizeof.State+State.currentMove]
@@ -559,8 +559,11 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 	     Assert   ne, dword[rbx-1*sizeof.State+State.currentMove], 0	, 'assertion dword[rbx-1*sizeof.State+State.currentMove] != MOVE_NONE failed in	Search.Step9'
 	     Assert   ne, dword[rbx-1*sizeof.State+State.currentMove], MOVE_NULL, 'assertion dword[rbx-1*sizeof.State+State.currentMove] != MOVE_NULL failed in	Search.Step9'
 
+		movzx ecx, byte[.improving]
+		imul  ecx, 48
 		mov   edi, dword[.beta]
-		add   edi, 200
+		add   edi, 216
+		sub   edi, ecx
 		mov   eax, VALUE_INFINITE
 		cmp   edi, eax
 	      cmovg   edi, eax
@@ -616,9 +619,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		test   eax, eax
 		 jz   .9moveloop
 
-		mov    r12d, dword[.depth]
-		sub    r12d, 3
-		cmp    dword[.probCutCount], r12d
+		cmp    dword[.probCutCount], 3
 		jge   .9moveloop_done
 		add    dword[.probCutCount], 1
 		mov   ecx, dword[.move]
@@ -641,22 +642,29 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		call   Move_Do__ProbCut
 
 		mov  edi, dword[.depth]
-		cmp  edi, 5 * ONE_PLY
-		je  .9do_regular
-		mov  ecx, r13d
+		mov  ecx, dword[.rbeta]
 		neg  ecx
 		lea  edx, [rcx+1]
-		mov  r8d, ONE_PLY
+		xor  r8, r8
 		movzx  r9d, byte[.cutNode]
 		not  r9d
 		mov  byte[rbx+State.skipEarlyPruning],	-1
-		call  Search_NonPv
+		lea   r10, [QSearch_NonPv_InCheck]
+		lea   r11, [QSearch_NonPv_NoCheck]
+		cmp   byte[rbx-1*sizeof.State+State.givesCheck], 0
+	    cmovne   r11, r10
+		call  r11
 		neg  eax
-		mov  esi, eax
 		mov  byte[rbx+State.skipEarlyPruning],	0
-		cmp  eax, r13d
-		jl  .9after_search
-.9do_regular:
+		mov  esi, eax
+		cmp  eax, dword[.rbeta]
+		jge  @f
+		mov   ecx, dword[.move]
+		call   Move_Undo
+		mov   eax, esi
+		cmp   esi, r13d
+		jl   .9moveloop
+    @@:
 		mov  ecx, r13d
 		neg  ecx
 		lea  edx, [rcx+1]
@@ -666,7 +674,6 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		call  Search_NonPv
 		neg  eax
 		mov  esi, eax
-.9after_search:
 
 		mov   ecx, dword[.move]
 		call   Move_Undo
@@ -698,7 +705,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		call   Search_Pv
   else
 		mov   eax, dword[rbx+State.staticEval]
-		add   eax, 256
+		add   eax, 128
 		cmp   eax, dword[.beta]
 		 jl   .10skip
 		mov   ecx, dword[.alpha]
