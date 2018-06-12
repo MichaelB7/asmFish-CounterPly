@@ -1396,19 +1396,19 @@ macro EvalSpace Us
 	     Assert   e, PiecesUs, qword[rbp+Pos.typeBB+8*Us], 'assertion PiecesUs failed in EvalSpace'
 	     Assert   e, PiecesThem, qword[rbp+Pos.typeBB+8*Them], 'assertion PiecesThem failed in EvalSpace'
 
-
+		mov  rdx, SpaceMask
+		mov  rax, PiecesUs
+		and  rax, PiecesPawn
+		not  rax
+		and  rax, rdx
+		mov  rcx, qword[.ei.attackedBy+8*(8*Them+Pawn)]
+		not  rcx
+		and  rax, rcx
+		
 		mov   rdx, PiecesUs
 		and   rdx, PiecesPawn
-	; rdx = pos.pieces(Us, PAWN)
+		mov  rcx, rdx
 
-		_andn   rax, AttackedByUs, AttackedByThem
-		or   rax, qword[.ei.attackedBy+8*(8*Them+Pawn)]
-		or   rax, rdx
-		mov   rcx, SpaceMask
-		_andn   rax, rax, rcx
-	; rax = safe
-
-		mov   rcx, rdx
 	if Us eq White
 		shr   rdx, 8
 		or   rcx, rdx
