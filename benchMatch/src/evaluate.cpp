@@ -171,6 +171,7 @@ namespace {
   constexpr Score KnightOnQueen      = S( 21, 11);
   constexpr Score LongDiagonalBishop = S( 22,  0);
   constexpr Score MinorBehindPawn    = S( 16,  0);
+  constexpr Score Overload           = S( 10,  5);
   constexpr Score PawnlessFlank      = S( 20, 80);
   constexpr Score RookOnPawn         = S(  8, 24);
   constexpr Score SliderOnQueen      = S( 42, 21);
@@ -300,6 +301,7 @@ namespace {
     Bitboard b, bb;
     Square s;
     Score score = SCORE_ZERO;
+    int mob;
 
     attackedBy[Us][Pt] = 0;
 
@@ -324,7 +326,8 @@ namespace {
             kingAttacksCount[Us] += popcount(b & attackedBy[Them][KING]);
         }
 
-        int mob = popcount(b & mobilityArea[Us]);
+        mob = (Pt == KNIGHT || Pt == BISHOP) ? popcount(b & mobilityArea[Us] & ~pos.pieces(Us, QUEEN))
+                                             : popcount(b & mobilityArea[Us]);
 
         mobility[Us] += MobilityBonus[Pt - 2][mob];
 
@@ -373,7 +376,7 @@ namespace {
 
         if (Pt == ROOK)
         {
-            // Bonus for aligning rook with with enemy pawns on the same rank/file
+            // Bonus for aligning rook with enemy pawns on the same rank/file
             if (relative_rank(Us, s) >= RANK_5)
                 score += RookOnPawn * popcount(pos.pieces(Them, PAWN) & PseudoAttacks[ROOK][s]);
 
@@ -518,19 +521,15 @@ namespace {
     Bitboard b, weak, defended, nonPawnEnemies, stronglyProtected, safeThreats;
     Score score = SCORE_ZERO;
 
-    // Non-pawn enemies attacked by a pawn
+    // Non-pawn enemies
     nonPawnEnemies = pos.pieces(Them) ^ pos.pieces(Them, PAWN);
-    weak = nonPawnEnemies & attackedBy[Us][PAWN];
 
-    if (weak)
-    {
-        // Our safe or protected pawns
-        b =  pos.pieces(Us, PAWN)
-           & (~attackedBy[Them][ALL_PIECES] | attackedBy[Us][ALL_PIECES]);
+    // Our safe or protected pawns
+    b =   pos.pieces(Us, PAWN)
+       & (~attackedBy[Them][ALL_PIECES] | attackedBy[Us][ALL_PIECES]);
 
-        safeThreats = pawn_attacks_bb<Us>(b) & weak;
-        score += ThreatBySafePawn * popcount(safeThreats);
-    }
+    safeThreats = pawn_attacks_bb<Us>(b) & nonPawnEnemies;
+    score += ThreatBySafePawn * popcount(safeThreats);
 
     // Squares strongly protected by the enemy, either because they defend the
     // square with a pawn, or because they defend the square twice and we don't.
@@ -609,6 +608,12 @@ namespace {
     // Connectivity: ensure that knights, bishops, rooks, and queens are protected
     b = (pos.pieces(Us) ^ pos.pieces(Us, PAWN, KING)) & attackedBy[Us][ALL_PIECES];
     score += Connectivity * popcount(b);
+
+    // Bonus for overload (non-pawn enemies attacked and defended exactly once)
+    b =  nonPawnEnemies
+       & attackedBy[Us][ALL_PIECES]   & ~attackedBy2[Us]
+       & attackedBy[Them][ALL_PIECES] & ~attackedBy2[Them];
+    score += Overload * popcount(b);
 
     if (T)
         Trace::add(THREAT, Us, score);
@@ -692,7 +697,7 @@ namespace {
             }
             else if (pos.pieces(Us) & blockSq)
                 bonus += make_score(w + r * 2, w + r * 2);
-        } // rr != 0
+        } // w != 0
 
         // Scale down bonus for candidate passers which need more than one
         // pawn push to become passed or have a pawn in front of them.
@@ -800,11 +805,10 @@ namespace {
     {
         if (pos.opposite_bishops())
         {
-            // Endgame with opposite-colored bishops and no other pieces (ignoring pawns)
-            // is almost a draw, in case of KBP vs KB, it is even more a draw.
+            // Endgame with opposite-colored bishops and no other pieces is almost a draw
             if (   pos.non_pawn_material(WHITE) == BishopValueMg
                 && pos.non_pawn_material(BLACK) == BishopValueMg)
-                sf = more_than_one(pos.pieces(PAWN)) ? 31 : 9;
+                sf = 31;
 
             // Endgame with opposite-colored bishops, but also other pieces. Still
             // a bit drawish, but not as drawish as with only the two bishops.
