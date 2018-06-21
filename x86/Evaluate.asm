@@ -1411,17 +1411,15 @@ macro EvalSpace Us
 	     Assert   e, PiecesUs, qword[rbp+Pos.typeBB+8*Us], 'assertion PiecesUs failed in EvalSpace'
 	     Assert   e, PiecesThem, qword[rbp+Pos.typeBB+8*Them], 'assertion PiecesThem failed in EvalSpace'
 
+	; Find the safe squares for our pieces inside the area defined by SpaceMask.
 		mov  rdx, SpaceMask
 		mov  rax, PiecesUs
-		and  rax, PiecesPawn
-		not  rax
-		and  rax, rdx
 		mov  rcx, qword[.ei.attackedBy+8*(8*Them+Pawn)]
-		not  rcx
-		and  rax, rcx
-		
-		mov   rdx, PiecesUs
-		and   rdx, PiecesPawn
+		and  rax, PiecesPawn
+		_andn  rax, rax, rdx
+		_andn  rax, rcx, rax
+		mov  rdx, PiecesUs
+		and  rdx, PiecesPawn
 		mov  rcx, rdx
 
 	if Us eq White
