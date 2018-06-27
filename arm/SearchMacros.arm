@@ -1,5 +1,15 @@
+; RazorMargin[] =
 RazorMargin1 = 590
 RazorMargin2 = 604
+
+; CapturePruneMargin[] =
+CapturePruneMargin0 = 0    ; 0
+CapturePruneMargin1 = 253  ; 1 * PawnValueEg * 1055 / 1000
+CapturePruneMargin2 = 500  ; 2 * PawnValueEg * 1042 / 1000
+CapturePruneMargin3 = 693  ; 3 * PawnValueEg * 963  / 1000
+CapturePruneMargin4 = 996  ; 4 * PawnValueEg * 1038 / 1000
+CapturePruneMargin5 = 1140 ; 5 * PawnValueEg * 950  / 1000
+CapturePruneMargin6 = 1339 ; 6 * PawnValueEg * 930  / 1000
 
 macro Search PvNode, RootNode
   if RootNode = 1 & PvNode = 0
@@ -221,7 +231,7 @@ Display 2, "Search(alpha=%i1, beta=%i2, depth=%i8, cutNode=%i9) called%n"
             str  w0, [sp, .evalu]
             str  w0, [x21, State.staticEval]
             ldr  x1, [x21, State.checkersBB]
-            mov  w2, 1
+            mov  w2, 0
            strb  w2, [sp, .improving]
            cbnz  x1, .moves_loop
             ldr  w2, [x21, -1*sizeof.State + State.currentMove]
@@ -304,12 +314,12 @@ Display 2, "Search(alpha=%i1, beta=%i2, depth=%i8, cutNode=%i9) called%n"
             bhs  .6skip
     end if
             cmp  w2, ONE_PLY
-            bne  @1f            
+            bne  @1f
             ldr  w4, [sp, .evalu]
             add  w0, w4, RazorMargin1
             ldr  w1, [sp, .alpha]
             cmp  w0, w1
-            bgt  @1f  
+            bgt  @1f
             add  w2, w1, 1
             mov  w8, 0
             bl  QSearch_NonPv_NoCheck
@@ -319,9 +329,9 @@ Display 2, "Search(alpha=%i1, beta=%i2, depth=%i8, cutNode=%i9) called%n"
             add  w0, w4, RazorMargin2
             ldr  w1, [sp, .alpha]
             cmp  w0, w1
-            bgt  .6skip            
+            bgt  .6skip
             mov  w8, 0
-            sub  w1, w1, RazorMargin2  
+            sub  w1, w1, RazorMargin2
             add  w2, w1, 1
             mov  w26, w1
             bl  QSearch_NonPv_NoCheck
@@ -329,7 +339,7 @@ Display 2, "Search(alpha=%i1, beta=%i2, depth=%i8, cutNode=%i9) called%n"
             ble  .Return
 .6skip:
   end if
-  
+
     ; Step 7. Futility pruning: child node (skipped when in check)
   if (RootNode = 0 & USE_MATEFINDER = 0) | (PvNode = 0 & USE_MATEFINDER = 1)
             ldr  w2, [sp, .depth]
@@ -520,7 +530,7 @@ Display 2, "Search(alpha=%i1, beta=%i2, depth=%i8, cutNode=%i9) called%n"
             adr  x1, Search_NonPv
             cmp  w26, ONE_PLY
            csel  x22, x1, x22, ge
-           csel  w8, w0, w8, lt 
+           csel  w8, w0, w8, lt
             sub  w1, w2, 1
             mov  w9, 0
             blr  x22
@@ -556,8 +566,12 @@ Display 2, "Search(alpha=%i1, beta=%i2, depth=%i8, cutNode=%i9) called%n"
             cmp  w0, w4
             bhs  .9skip
     end if
+            ldrb  w1, [sp, .improving]
+            mov  w0, 48
+            mul  w1, w1, w0
             ldr  w27, [sp, .beta]
-            add  w27, w27, 200
+            add  w27, w27, 216
+            sub  w27, w27, w1
             mov  w0, VALUE_INFINITE
             cmp  w27, w0
            csel  w27, w0, w27, gt
@@ -605,8 +619,8 @@ Display 2, "Search(alpha=%i1, beta=%i2, depth=%i8, cutNode=%i9) called%n"
             cbz  w0, .9moveloop_done
              bl  Move_IsLegal
             cbz  w0, .9moveloop
-            ldr  w22,[sp, .depth]
-            sub  w22, w22, 3
+
+            mov  w22, 3
             ldr  w0, [sp, .probCutCount]
             cmp  w0, w22
             bge  .9moveloop
@@ -629,21 +643,35 @@ Display 2, "Search(alpha=%i1, beta=%i2, depth=%i8, cutNode=%i9) called%n"
              bl  Move_Do__ProbCut
 
                 ldr  w27, [sp, .depth]
-                cmp  w27, 5 * ONE_PLY
-                beq  .9do_regular
-                neg  w1, w23
+                ldr  w1, [sp, .rbeta]
+
+                neg  w1, w1
                 add  w2, w1, 1
-                mov  w8, ONE_PLY
+                eor  x8, x8, x8
+
                ldrb  w9, [sp, .cutNode]
                 mvn  w9, w9
                 mov  w4, -1
                strb  w4, [x21, State.skipEarlyPruning]
-                 bl  Search_NonPv
+
+               adr  x10, QSearch_NonPv_InCheck
+               adr  x11, QSearch_NonPv_NoCheck
+               ldrb  w4, [x21, -1*sizeof.State + State.givesCheck]
+                tst  w4, w4
+                csel  x11, x10, x11, ne
+                blr  x11
                 neg  w26, w0
+
                strb  wzr, [x21, State.skipEarlyPruning]
-                cmp  w26, w23
-                blt  .9after_search
-.9do_regular:
+               ldr  w4, [sp, .rbeta]
+               cmp  w26, w4
+               bge  @f
+               ldr  w1, [sp, .move]
+               bl  Move_Undo
+               mov  w0, w26
+               cmp  w26, w23
+               blt  .9moveloop
+@@:
                 neg  w1, w23
                 add  w2, w1, 1
                 sub  w8, w27, 4*ONE_PLY
@@ -651,7 +679,6 @@ Display 2, "Search(alpha=%i1, beta=%i2, depth=%i8, cutNode=%i9) called%n"
                 mvn  w9, w9
                  bl  Search_NonPv
                 neg  w26, w0
-.9after_search:
 
                 ldr  w1, [sp, .move]
                  bl  Move_Undo
@@ -666,7 +693,7 @@ Display 2, "Search(alpha=%i1, beta=%i2, depth=%i8, cutNode=%i9) called%n"
             ldr  w8, [sp, .depth]
             ldr  w1, [sp, .ttMove]
            cbnz  w1, .10skip
-            cmp  w8, 6*ONE_PLY
+            cmp  w8, 8*ONE_PLY
             blt  .10skip
             add  w8, w8, w8, lsl 1
             asr  w8, w8, 2
@@ -679,11 +706,6 @@ Display 2, "Search(alpha=%i1, beta=%i2, depth=%i8, cutNode=%i9) called%n"
            strb  w4, [x21, State.skipEarlyPruning]
              bl  Search_Pv
   else
-            ldr  w0, [x21, State.staticEval]
-            add  w0, w0, 256
-            ldr  w4, [sp, .beta]
-            cmp  w0, w4
-            blt  .10skip
             ldr  w1, [sp, .alpha]
             ldr  w2, [sp, .beta]
            ldrb  w9, [sp, .cutNode]
@@ -697,25 +719,25 @@ Display 2, "Search(alpha=%i1, beta=%i2, depth=%i8, cutNode=%i9) called%n"
             str  x0, [sp, .tte]
             str  x1, [sp, .ltte]
            strb  w2, [sp, .ttHit]
-                asr  x27, x1, 48
-                lsr  w1, w1, 16
-                str  w1, [sp, .ttMove]
+           asr  x27, x1, 48
+           lsr  w1, w1, 16
+           str  w1, [sp, .ttMove]
 
-                mov  w4, VALUE_MATE_IN_MAX_PLY
-                mov  w5, VALUE_NONE
-                add  w8, w27, w4
-                cbz  w2, @1f
-                cmp  w27, w5
-                beq  @1f
-                cmp  w8, w5, lsl 1
-                blo  @1f
-                ldr  w8, [x21, State.ply]
-                asr  w9, w27, 31
-                eor  w8, w8, w9
-                add  w27, w27, w9
-                sub  w27, w27, w8
+           mov  w4, VALUE_MATE_IN_MAX_PLY
+           mov  w5, VALUE_NONE
+           add  w8, w27, w4
+           cbz  w2, @1f
+           cmp  w27, w5
+           beq  @1f
+           cmp  w8, w5, lsl 1
+           blo  @1f
+           ldr  w8, [x21, State.ply]
+           asr  w9, w27, 31
+           eor  w8, w8, w9
+           add  w27, w27, w9
+           sub  w27, w27, w8
         @1:
-                str  w27, [sp, .ttValue]
+           str  w27, [sp, .ttValue]
 .10skip:
 .moves_loop:    ; this is actually not the head of the loop
     ; The data at tte could have been changed by
@@ -996,15 +1018,15 @@ Display 2, "Search(alpha=%i1, beta=%i2, depth=%i8, cutNode=%i9) called%n"
             add  w1, w1, w8, lsl 3
             mov  w4, 5000
             cmp  w26, w4
-            bhs  .13do
+            bhs  @f
             cmp  w24, w1
-            bne  .13do
+            bne  @f
             mov  w4, 56
             mul  w8, w8, w4
             eor  w8, w8, w22
             cmp  w8, SQ_A5
             bhs  .13else
-.13do:
+@@:
     ; Move count based pruning
            ldrb  w0, [sp, .moveCountPruning]
            ldrb  w4, [sp, .skipQuiets]
@@ -1025,15 +1047,15 @@ Display 2, "Search(alpha=%i1, beta=%i2, depth=%i8, cutNode=%i9) called%n"
             ldr  w0, [x8, x11, lsl 2]
             ldr  w1, [x9, x11, lsl 2]
             cmp  w27, 3*ONE_PLY
-            bge  .13DontSkip2
+            bge  @f
             and  w0, w0, w1
            tbnz  w0, 31, .MovePickLoop
-.13DontSkip2:
+@@:
     ; Futility pruning: parent node
             mov  w2, 0
             cmp  w27, 7*ONE_PLY
             bgt  .13done
-            beq  .13check_see
+            beq  @f
             tst  w27, w27
            csel  w27, w2, w27, mi
             mov  w0, 200
@@ -1041,13 +1063,13 @@ Display 2, "Search(alpha=%i1, beta=%i2, depth=%i8, cutNode=%i9) called%n"
             add  w0, w0, 256
             ldr  w4, [x21, State.checkersBB]
             cmp  w2, w4
-            bne  .13check_see
+            bne  @f
             ldr  w4, [x21, State.staticEval]
             add  w0, w0, w4
             ldr  w4, [sp, .alpha]
             cmp  w0, w4
             ble  .MovePickLoop
-.13check_see:
+@@:
     ; Prune moves with negative SEE at low depths
             ldr  w1, [sp, .move]
             mov  w2, -35
@@ -1060,10 +1082,44 @@ Display 2, "Search(alpha=%i1, beta=%i2, depth=%i8, cutNode=%i9) called%n"
             ldr  w1, [sp, .move]
             cmp  w2, 7*ONE_PLY
             bge  .13done
-           ldrb  w4, [sp, .extension]
-           cbnz  w4, .13done
-            mov  w4, -PawnValueEg
-            mul  w2, w2, w4
+            ldrb  w4, [sp, .extension]
+            cbnz  w4, .13done
+
+            ; Todo: The following may be restructured (to be more aesthetically pleasing)
+            ; and/or reordered (for speed optimization).
+            cmp  w2, 0
+            bne  @f
+            mov  w2, -CapturePruneMargin0
+            b  @1f
+@@:
+            cmp  w2, 1
+            bne  @f
+            mov  w2, -CapturePruneMargin1
+            b  @1f
+@@:
+            cmp  w2, 2
+            bne  @f
+            mov  w2, -CapturePruneMargin2
+            b  @1f
+@@:
+            cmp  w2, 3
+            bne  @f
+            mov  w2, -CapturePruneMargin3
+            b  @1f
+@@:
+            cmp  w2, 4
+            bne  @f
+            mov  w2, -CapturePruneMargin4
+            b  @1f
+@@:
+            cmp  w2, 5
+            bne  @f
+            mov  w2, -CapturePruneMargin5
+            b  @1f
+@@:
+            mov  w2, -CapturePruneMargin6
+            b  @1f
+@1:
              bl  SeeTestGe
             cbz  w0, .MovePickLoop
 .13done:
@@ -1439,12 +1495,19 @@ Display 2, "Search(alpha=%i1, beta=%i2, depth=%i8, cutNode=%i9) called%n"
   if PvNode = 1
             ldr  w4, [sp, .beta]
             cmp  w27, w4
-            bge  .MovePickDone
+            bge  .18fail_high
             str  w27, [sp, .alpha]
               b  .18NoNewBestValue
   end if
 .18fail_high:
-              b  .MovePickDone
+            ldr  w0, [x21, State.statScore]
+            cmp  w0, 0
+            csel w0, w0, wzr, ge
+            str  w0, [x21, State.statScore]
+            b  .MovePickDone
+        @1:
+            str x0, [x21, + State.statScore]
+            b  .MovePickDone
 .18NoNewAlpha:
 .18NoNewBestValue:
             ldr  w1, [sp, .move]
@@ -1478,7 +1541,7 @@ Display 2, "Search(alpha=%i1, beta=%i2, depth=%i8, cutNode=%i9) called%n"
             sub  w26, w0, 1
             and  w0, w0, 63
             add  x6, x20, Pos.board
-           ldrb  w1, [x6, x0] 
+           ldrb  w1, [x6, x0]
             lsl  w1, w1, 6
             add  w25, w0, w1
             ldr  w22, [sp, .bestMove]

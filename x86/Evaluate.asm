@@ -43,7 +43,7 @@ macro EvalInit Us
 	East	= DELTA_E
    end if
 
-  
+
 ;		Assert   e, rdi, qword[.ei.pi], 'assertion rdi = ei.pi failed in EvalInit'
 		movzx  ecx, word[rbx+State.npMaterial+2*Us]
 		movzx  eax, byte[rbp+Pos.pieceList+16*(8*Them+King)]
@@ -55,7 +55,7 @@ macro EvalInit Us
 		or     qword[.ei.attackedBy+8*(8*Us+0)],	r10
 		xor    r8, r8
 		xor    edx, edx
-		
+
 		cmp   ecx, RookValueMg + KnightValueMg
 		jb    @1f
 
@@ -96,7 +96,7 @@ macro EvalInit Us
 
 	@@:
 		and   r9, r10
-		_popcnt   rdx, r9, rcx  
+		_popcnt   rdx, r9, rcx
 		xor   eax, eax
 		mov   dword[.ei.kingAttackersWeight+4*Us], eax
 		mov   dword[.ei.kingAdjacentZoneAttacksCount+4*Us], eax
@@ -251,22 +251,15 @@ NoPinned:
 		add   dword[.ei.kingAdjacentZoneAttacksCount+4*Us], eax
 NoKingRing:
 
-    if Pt	= Knight | Pt =	Bishop
 		mov   rax, qword[.ei.mobilityArea+8*Us]
 		and   rax, r9
-		mov   rcx, qword[rbp+Pos.typeBB+8*Queen]
-		and   rcx, r11
-		_andn rax, rcx, rax
-	else 
-		mov   rax, qword[.ei.mobilityArea+8*Us]
-		and   rax, r9
-	end if
+
 		_popcnt   r10, rax, rcx
 		mov   eax, dword[MobilityBonus + 4*r10]
 		addsub   dword[.ei.mobilityDiff], eax
 		addsub   esi, eax
 		; r10 = mob
-		
+
 		lea   eax, [8*r8]
 		movzx   eax, byte[SquareDistance+8*rax+r14]
 		imul   eax, KingProtector_Pt
@@ -509,7 +502,7 @@ macro EvalKing Us
 		Assert   e, PiecesThem, qword[rbp+Pos.typeBB+8*Them], 'assertion PiecesThem failed in EvalKing'
 
 		movzx ecx, byte[rbp+Pos.pieceList+16*(8*Us+King)]
-		mov   r11d, ecx 
+		mov   r11d, ecx
 		; r11d = our king square
 		movzx eax, byte[rbx+State.castlingRights]
 		movzx edx, byte[rdi+PawnEntry.castlingRights]
@@ -611,7 +604,7 @@ KingSafetyDoneRet:
 		lea    eax, [rdi+BishopCheck]
 		cmovnz edi, eax
 		jnz    BishopDone
-		or     r9, rdx 
+		or     r9, rdx
   BishopDone:
 
 	; Enemy knights safe and other checks
@@ -619,12 +612,12 @@ KingSafetyDoneRet:
 		lea    eax, [rdi+KnightCheck]
 		cmovnz edi, eax
 		jnz    KnightDone
-		or     r9, rcx 
+		or     r9, rcx
   KnightDone:
 
 		mov   r10, qword[.ei.mobilityArea+8*Them]
 		and   r9, r10
-		
+
 		mov   rdx, qword[.ei.pinnedPieces+8*Us]
 		or    rdx, r9
 
@@ -762,8 +755,6 @@ macro ShelterStorm Us
 	PiecesThem	equ r14
   end if
 
-	MaxSafetyBonus = 258
-
 		push   rsi rdi r11 r12 r13
 
 
@@ -780,18 +771,23 @@ macro ShelterStorm Us
 		mov   r9, PiecesUs
 		and   r9, r8
 	; r9 = ourPawns
+  and   ecx, 7
+; ecx = file of ksq
 		mov   r10, PiecesThem
 		and   r10, r8
 	; r10 = theirPawns
-		mov   eax, MaxSafetyBonus
+    mov  rax, qword[FileBB+8*rcx]
+		and  rax, r9
+		cmp  rax, 1
+		sbb  eax, eax
+		and  eax, -10
+		add  eax, 5
 	; eax = saftey
 	if Us eq Black
 		xor   r13d, 7
 	end if
 		add   r13d, 1
 	; r13d = relative_rank(Us, ksq)+1
-		and   ecx, 7
-	; ecx = file of ksq
 		lea   r12d, [5*rcx]
 		lea   r12d, [r12+8*rcx+2]
 		shr   r12d, 4
@@ -844,31 +840,31 @@ macro ShelterStorm Us
 
 		mov   edx, r12d
 		shl   edx, 3+2
-	; ShelterWeakness and StormDanger are twice as big
-	; to avoid an anoying min(f,FILE_H-f) in ShelterStorm
+	; ShelterStrength and StormDanger are twice as big
+	; to avoid an annoying min(f,FILE_H-f) in ShelterStorm
 
 
 		add   esi, 1
 	; esi = rkUs+1
 
 		lea   r11, [StormDanger_BlockedByKing+rdx]
-		lea   r8, [ShelterWeakness_No -	4*1 + rdx]
+		lea   r8, [ShelterStrengthArray - 4*1 + rdx]
 		cmp   ecx, r12d
 		lea   r12d, [r12+1]
-		jne   TryNext
-		lea   r8, [ShelterWeakness_Yes - 4*1 + rdx]
+		jne   @f
+		lea   r8, [ShelterStrengthArray - 4*1 + rdx]
 		cmp   edi, r13d
-		je   AddStormDanger
-	TryNext:
+		je   @1f
+	@@:
 		lea   r11, [StormDanger_NoFriendlyPawn + rdx]
 		cmp   esi, 1
-		je   AddStormDanger
+		je   @1f
 		lea   r11, [StormDanger_BlockedByPawn +	rdx]
 		cmp   esi, edi
-		je   AddStormDanger
+		je   @1f
 		lea   r11, [StormDanger_Unblocked + rdx]
-	AddStormDanger:
-		sub   eax, dword[r8 + 4*rsi]
+	@1:
+		add   eax, dword[r8 + 4*rsi]
 		sub   eax, dword[r11 + 4*rdi]
   end macro
 
@@ -983,7 +979,7 @@ SafeThreatsDone:
 	; r8 = defended (= pos.pieces(Them) & ~pos.pieces(PAWN) & stronglyProtected)
 		_andn   r9, r9, PiecesThem
 		and   r9, AttackedByUs
-	; r9 = weak 
+	; r9 = weak
 		or   r8, r9
 	; r8 = defended | weak
 		jz   WeakDone
@@ -1118,7 +1114,7 @@ WeakDone:
 		_popcnt  rax, rax, rdx
 		imul   eax, KnightOnQueen
 		addsub  esi, eax
-		
+
 		mov  rcx, PiecesThem
 		or   rcx, PiecesUs
 		BishopAttacks  rax, r8, rcx, rdx
@@ -1155,7 +1151,7 @@ WeakDone:
 		_popcnt  r8, r8, rdx
 		imul   r8d, Overload
 		addsub  esi, r8d
-		
+
 end macro
 
 
@@ -1323,7 +1319,7 @@ AddToBonus:
                imul  eax, 0x00010001
                 add  esi, eax
 
-Continue:		
+Continue:
 	; r8d = blockSq
 
 	; scale down bonus for candidate passers which need more than one pawn
@@ -1597,7 +1593,6 @@ end virtual
 		imul   eax, 0x00010001
 		add   dword[.ei.score],	eax
 		test   ecx, ecx
-	;ProfileCond   nz, HaveSpecializedEval
 		jnz   HaveSpecializedEval
 
 		mov   eax, dword[rdi+PawnEntry.score]
@@ -1644,16 +1639,31 @@ end virtual
 		or   rdx, rsi
 		and   rax, r8
 		and   rdx, r9
-              movzx   ecx, byte[rbp+Pos.pieceList+16*(8*White+King)]
-		movzx   esi, byte[rbp+Pos.pieceList+16*(8*Black+King)]
+
+		mov  rcx, qword[rbp+Pos.typeBB+8*King]
+		and  rcx, qword[rbp+Pos.typeBB+8*White]
+		mov  r8, qword[rbp+Pos.typeBB+8*Queen]
+		and  r8, qword[rbp+Pos.typeBB+8*White]
+		or   rcx, r8
+
+		mov  rsi, qword[rbp+Pos.typeBB+8*King]
+		and  rsi, qword[rbp+Pos.typeBB+8*Black]
+		mov  r9, qword[rbp+Pos.typeBB+8*Queen]
+		and  r9, qword[rbp+Pos.typeBB+8*Black]
+		or   rsi, r9
+
 		or   rax, qword[.ei.attackedBy+8*(8*Black+Pawn)]
 		or   rdx, qword[.ei.attackedBy+8*(8*White+Pawn)]
-		bts   rax, rcx
-		bts   rdx, rsi
+		
+		or   rax, rcx
+		or   rdx, rsi
+
 		not   rax
 		not   rdx
+		
 		mov   qword[.ei.mobilityArea+8*White], rax
 		mov   qword[.ei.mobilityArea+8*Black], rdx
+
 
 
 	; EvalPieces adds to esi
@@ -1728,16 +1738,16 @@ end virtual
 		movzx   edx, byte[rdi+PawnEntry.asymmetry]
 		lea   edx, [rdx+rax-17]
 		lea   r8d, [r8+4*rax]
-		lea   r8d, [r8+8*rdx] 
-		
+		lea   r8d, [r8+8*rdx]
+
 		movzx   r9d, word[rbx+State.npMaterial+2*0]
 		movzx   ecx, word[rbx+State.npMaterial+2*1]
 		lea     r9d, [r9+rcx]
 		cmp     r9d, 1
 		sbb     r9d, r9d ; If the CF is 0, then r9d = 0.
-		and     r9d, 48		
+		and     r9d, 48
 		lea     r8d, [r8+r9]
-		
+
 		movsx r9d, si
 		sar   r9d, 31
 		movsx   edi, si
@@ -1765,7 +1775,7 @@ end virtual
 		xor   eax, edx
 		sub   eax, edx
 		lea   eax, [r8+8*rax]
-        ; eax = initiative
+	; eax = initiative
 
 		cmp   eax, edi
 		cmovl   eax, edi
@@ -1776,20 +1786,37 @@ end virtual
 
 	; esi = score
 	; r14 = ei.pi
-	; Evaluate scale factor for the winning side
 
-		movsx   r12d, si
-		lea   r13d, [r12-1]
-		shr   r13d, 31
+	; scale_factor() computes the scale factor for the winning side
 
-		movzx   ecx, byte[r15+MaterialEntry.scalingFunction+r13]
-		movzx   eax, byte[r15+MaterialEntry.factor+r13]
-		movzx   edx, byte[r15+MaterialEntry.gamePhase]
+		movsx   r12d, si ; r12 = temp (score)
+		lea   r13d, [r12-1] ; r13d = [score-1]
+		shr   r13d, 31 ; isolates top bit,
+
+	; r13d = 1 or 0 where 1 = black's winning and 0 = white's winning
+
+		movzx ecx, byte[r15+MaterialEntry.scalingFunction+r13]
+		movzx eax, byte[r15+MaterialEntry.factor+r13]
+		movzx edx, byte[r15+MaterialEntry.gamePhase]
 		add   esi, 0x08000
 		sar   esi, 16
-		test   ecx, ecx
-		jnz   Evaluate_Cold2.HaveScaleFunction		; 1.98%
-.HaveScaleFunctionReturn:
+		test  ecx, ecx
+		jz @f
+
+; Scale Function Exists
+		mov   eax, ecx
+		shr   eax, 1
+		mov   eax, dword[EndgameScale_FxnTable+4*rax]
+		and   ecx, 1
+		call  rax
+
+; Check for Scale Factor
+		cmp   eax, SCALE_FACTOR_NONE
+		movzx  edx, byte[r15+MaterialEntry.gamePhase]
+		movzx  ecx, byte[r15+MaterialEntry.factor+r13]
+		cmove  eax, ecx
+
+@@:
 		lea   ecx, [rax-48]
 		mov   r10, qword[rbp+Pos.typeBB+8*Bishop]
 		mov   r8, qword[rbp+Pos.typeBB+8*White]
@@ -1797,7 +1824,7 @@ end virtual
 		mov   edi, dword[rbx+State.npMaterial]
 		and   r8, r10
 		and   r9, r10
-		test   ecx, not 16
+		test   ecx, -17 ; not 16
 		jnz   .ScaleFactorDone
 		_blsr   r8, r8, rcx
 		_blsr   r9, r9, rcx
@@ -1819,23 +1846,15 @@ end virtual
 		cmp   edi, (BishopValueMg shl 16) + BishopValueMg
 		cmove   eax, ecx
 		jmp   .ScaleFactorDone
+
 .NotOppBishop:
-		lea   r9d, [r12+BishopValueEg]
 		and   r11, qword[rbp+Pos.typeBB+8*r13]
-		xor   r13d, 1
-		cmp   r9d, 2*BishopValueEg+1
-		jae   .ScaleFactorDone
-		shl   r13, 4+3
-		movzx   r9d, byte[rbp+Pos.pieceList+16*(King)+r13]
-		lea   r8, [PassedPawnMask+4*r13]
-		test   r11, qword[r8+8*r9]
-		jz   .ScaleFactorDone
-		_popcnt   rcx, r11, r9
-		cmp   ecx, 3
-		jae   .ScaleFactorDone
-		imul   ecx, 7
-		add   ecx, 37
-		mov   eax, ecx
+		_popcnt   rcx, r11, r9 ;  pos.count<PAWN>(strongSide)
+		imul  ecx, 7
+		add   ecx, 40
+		cmp   eax, ecx
+		cmovg eax, ecx
+
 .ScaleFactorDone:
 	; eax = scale factor
 	; edx = phase
@@ -1872,26 +1891,11 @@ Display 2, "Eval returned %i0%n"
 		ret
 
 
-
-
 Evaluate_Cold2:
 
 virtual at rsp
  .ei EvalInfo
 end virtual
-
-.HaveScaleFunction:
-		mov   eax, ecx
-		shr   eax, 1
-		mov   eax, dword[EndgameScale_FxnTable+4*rax]
-		and   ecx, 1
-		call   rax
-Display 2, "Scale returned %i0%n"
-		cmp   eax, SCALE_FACTOR_NONE
-		movzx   edx, byte[r15+MaterialEntry.gamePhase]
-		movzx   ecx, byte[r15+MaterialEntry.factor+r13]
-		cmove   eax, ecx
-		jmp   Evaluate.HaveScaleFunctionReturn
 
 		calign   16
 .EvalPassedPawns0:
@@ -1903,8 +1907,6 @@ Display 2, "Scale returned %i0%n"
 .EvalPassedPawns1:
     EvalPassedPawns   Black
 		jmp   Evaluate.EvalPassedPawnsRet
-
-
 
 HaveSpecializedEval:
 		mov   eax, ecx
@@ -2153,28 +2155,8 @@ end iterate
 		cmp   r15d, RookValueMg
 		cmovl   eax, ecx
 		mov   byte[rsi+MaterialEntry.factor+1*Black], al
+
 .P2:
-		mov   eax, dword[rsp+4*(8*White+Pawn)]
-		cmp   eax, 1
-		jne   .P3
-		mov   ecx, r14d
-		sub   ecx, r15d
-		cmp   ecx, BishopValueMg
-		jg   .P3
-		mov   byte[rsi+MaterialEntry.factor+1*White], SCALE_FACTOR_ONEPAWN
-.P3:
-		mov   eax, dword[rsp+4*(8*Black+Pawn)]
-		cmp   eax, 1
-		jne   .P4
-		mov   ecx, r15d
-		sub   ecx, r14d
-		cmp   ecx, BishopValueMg
-		jg   .P4
-		mov   byte[rsi+MaterialEntry.factor+1*Black], SCALE_FACTOR_ONEPAWN
-.P4:
-
-
-
 		lea   r8, [rsp+4*0]	;  pieceCount[Us]
 		lea   r9, [rsp+4*8]	;  pieceCount[Them]
 		xor   eax, eax

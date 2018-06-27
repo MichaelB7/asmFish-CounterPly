@@ -1,20 +1,22 @@
-KnightOnQueen       = ( 21 shl 16) + ( 11)
-MinorBehindPawn 	= ( 16 shl 16) + (  0)
-BishopPawns		= (  8 shl 16) + ( 12)
-LongRangedBishop        = ( 22 shl 16) + (  0)
-RookOnPawn		= (  8 shl 16) + ( 24)
-TrappedRook		= ( 92 shl 16) + (  0)
-WeakQueen		= ( 50 shl 16) + ( 10)
+Overload       =  (10 shl 16) + (5)
+Connectivity   =  (3 shl 16) + (1)
+KnightOnQueen		= ( 21 shl 16) + ( 11)
+MinorBehindPawn		= ( 16 shl 16) + (  0)
+BishopPawns             = (  8 shl 16) + ( 12)
+LongRangedBishop	= ( 22 shl 16) + (  0)
+RookOnPawn              = (  8 shl 16) + ( 24)
+TrappedRook             = ( 92 shl 16) + (  0)
+WeakQueen               = ( 50 shl 16) + ( 10)
 CloseEnemies		= (  7 shl 16) + (  0)
 PawnlessFlank		= ( 20 shl 16) + ( 80)
-ThreatBySafePawn        = (175 shl 16) + (168)
+ThreatBySafePawn	= (175 shl 16) + (168)
 ThreatByRank		= ( 16 shl 16) + (  3)
-Hanging 		= ( 52 shl 16) + ( 30)
-WeakUnopposedPawn       = (  5 shl 16) + ( 25)
+Hanging                        = ( 52 shl 16) + ( 30)
+WeakUnopposedPawn	= (  5 shl 16) + ( 25)
 ThreatByPawnPush	= ( 47 shl 16) + ( 26)
-ThreatByAttackOnQueen   = ( 42 shl 16) + ( 21)
+SliderOnQueen		= ( 42 shl 16) + ( 21)
 HinderPassedPawn	= (  8 shl 16) + (  1)
-TrappedBishopA1H1       = ( 50 shl 16) + ( 50)
+TrappedBishopA1H1	= ( 50 shl 16) + ( 50)
 
 LazyThreshold = 1500
 
@@ -23,55 +25,84 @@ macro EvalInit Us
     ; in:  r13 rook + queen
     ;      r12 bishop+queen
     ;      r14 all pieces
-  local Them, Down
-  local NotUsed, PinnedLoop, NoPinned, YesPinned
+  local Them, Down, Up, West, East
+  local NotUsed, PinnedLoop, NoPinned, YesPinned, FileASkip, FileHSkip
 
   if Us = White
-	AttackedBy_Us     = x12
-	AttackedBy_Them   = x13
+        AttackedBy_Us     = x12
+        AttackedBy_Them   = x13
         AttackedBy2_Us    = x14
         AttackedBy2_Them  = x15
         AttackedBy_UsPawn = x16
         Them = Black
-        Down = DELTA_S
+        Up = DELTA_S
+        Down = DELTA_N
+        West = DELTA_W
+        East = DELTA_E
   else
-	AttackedBy_Us     = x13
+        AttackedBy_Us     = x13
         AttackedBy2_Us    = x15
         AttackedBy2_Them  = x14
-	AttackedBy_Them   = x12
+        AttackedBy_Them   = x12
         AttackedBy_UsPawn = x17
         Them = White
-        Down = DELTA_N
+        Up = DELTA_N
+        Down = DELTA_S
+        West = DELTA_W
+        East = DELTA_E
   end if
            ldrh  w1, [x21, State.npMaterial + 2*Us]
-            ldr  w0, [sp, EvalInfo.ksq + 4*Them]
+           ldr  w0, [sp, EvalInfo.ksq + 4*Them]
+           mov  w11, w0
+           ldr  x9, [sp, EvalInfo.attackedBy + 8*(8*Them + King)]
+           orr  AttackedBy_Them, AttackedBy_Them, x9
+           ldr  AttackedBy_UsPawn, [x27, PawnEntry.pawnAttacks + 8*Us]
+           orr  AttackedBy_Us, AttackedBy_Us, AttackedBy_UsPawn
+
+           mov  x8, 0
+           mov  w2, 0
+           cmp  w1,  RookValueMg + KnightValueMg
+           blo  @1f
+
+  ; if (relative_rank(Us, pos.square<KING>) == RANK_1)
   if Them = White
-            cmp  w0, SQ_A2
+           cmp  w0, SQ_A2
            cset  w0, lo
   else
-            cmp  w0, SQ_A8
+           cmp  w0, SQ_A8
            cset  w0, hs
   end if
-            ldr  x9, [sp, EvalInfo.attackedBy + 8*(8*Them + King)]
-            orr  AttackedBy_Them, AttackedBy_Them, x9
-            ldr  AttackedBy_UsPawn, [x27, PawnEntry.pawnAttacks + 8*Us]
-            orr  AttackedBy_Us, AttackedBy_Us, AttackedBy_UsPawn
 
-            mov  x8, 0
-            mov  w2, 0
-            cmp  w1,  RookValueMg + KnightValueMg
-            blo  NotUsed
+  ; if kingRing[Us] |= shift<Up>(kingRing[Us]);
             mov  x8, x9
             neg  x0, x0
-        ShiftBB  Down, x8, x8
+            ShiftBB  Up, x8, x8
             and  x8, x8, x0
             orr  x8, x8, x9
+            mov  x2, x8
+            ; x8 = kingRing
+  ; if (file_of(pos.square<KING>) == FILE_H)
+            mov  w0, w11
+            and  w0, w0, 7
+            cmp  w0, 7
+            bne  FileHSkip
+            ShiftBB  West, x8, x8
+            orr  x8, x8, x2
+            mov  x2, x8
+FileHSkip:
+  ; if (file_of(pos.square<KING> == FILE_A)
+            mov  w1, 7
+            and  w11, w11, 7
+            cbnz  w11, FileASkip
+            ShiftBB  East, x8, x8
+            orr  x8, x8, x2
+FileASkip:
             and  x9, x9, AttackedBy_UsPawn
         _popcnt  x2, x9, x1
             mov  w0, 0
             str  w0, [sp, EvalInfo.kingAttackersWeight + 4*Us]
             str  w0, [sp, EvalInfo.kingAdjacentZoneAttacksCount + 4*Us]
-NotUsed:
+@1:
             str  x8, [sp, EvalInfo.kingRing + 8*Them]
             str  w2, [sp, EvalInfo.kingAttackersCount + 4*Us]
             ldr  x4, [sp, EvalInfo.attackedBy + 8*(8*Us + King)]
@@ -165,10 +196,6 @@ macro EvalPieces Us, Pt
 
             mov  w0, 0
             str  xzr, [sp, EvalInfo.attackedBy + 8*(8*Us + Pt)]
-  if Pt = Queen
-            str  xzr, [sp, EvalInfo.attackedBy + 8*(8*Us + QUEEN_DIAGONAL)]
-  end if
-
             add  x25, x20, Pos.pieceList + 16*(8*Us + Pt)
            ldrb  w24, [x20, Pos.pieceList + 16*(8*Us + Pt)]
             cmp  w24, 64
@@ -218,16 +245,6 @@ NoPinned:
             orr  AttackedBy2_Us, AttackedBy2_Us, x1
             str  x0, [sp, EvalInfo.attackedBy + 8*(8*Us + Pt)]
 
-  if Pt = Queen
-           _lea  x6, BishopAttacksPDEP
-            ldr  x4, [sp, EvalInfo.attackedBy + 8*(8*Us + QUEEN_DIAGONAL)]
-            ldr  x0, [x6, x24, lsl 3]
-            and  x0, x0, x9
-            orr  x0, x0, x4
-            str  x0, [sp, EvalInfo.attackedBy + 8*(8*Us + QUEEN_DIAGONAL)]
-  end if
-
-
             ldr  x4, [sp, EvalInfo.kingRing + 8*Them]
             tst  x9, x4
             beq  NoKingRing
@@ -249,8 +266,9 @@ NoPinned:
             str  w4, [sp, EvalInfo.kingAdjacentZoneAttacksCount + 4*Us]
 NoKingRing:
 
-            ldr  x0, [sp, EvalInfo.mobilityArea + 8*Us]
-            and  x0, x0, x9
+             ldr  x0, [sp, EvalInfo.mobilityArea + 8*Us]
+             and  x0, x0, x9
+
          Popcnt  x10, x0, x1
            _lea  x6, MobilityBonus
             ldr  w4, [x6, x10, lsl 2]
@@ -465,7 +483,7 @@ QueenPinLoop:
             orr  x2, x2, x1
            rbit  x1, x0
             clz  x1, x1
-           cbnz  x0, QueenPinLoop     
+           cbnz  x0, QueenPinLoop
             tst  x2, Pieces_All
           mov32  w4, WeakQueen
          AddSub  Them, w0, w26, w4
@@ -649,10 +667,10 @@ KnightDone:
 
            ldr  x10, [sp, EvalInfo.mobilityArea + 8*Them]
            and  x9, x9, x10
-           
+
            ldr  x2, [sp, EvalInfo.pinnedPieces + 8*Us]
            orr x2, x2, x9
-           
+
            _popcnt x4, x2, x1
            mov  w1, 143
            mul  w4, w4, w1
@@ -811,8 +829,6 @@ macro ShelterStorm Us
 	Pieces_Them = x28
  end if
 
-	MaxSafetyBonus = 258
-
             stp  x26, x27, [sp, -16]!
             stp  x11, x22, [sp, -16]!
             stp  x23, x30, [sp, -16]!
@@ -829,17 +845,23 @@ macro ShelterStorm Us
     ; r8 = b
             and  x9, Pieces_Us, x8
     ; r9 = ourPawns
+    ; w1 = file of ksq
+            and  w1, w1, 7
             and  x10, Pieces_Them, x8
     ; r10 = theirPawns
+    _lea  x6, FileBB
+
+     ldr  x2, [x6, x1, lsl 3]
+     and  x2, x2, x9
+     mov  w0, -5
+     cmp  x2, 0
+     csneg w0, w0, w0, eq
     ; w0 = saftey
-            mov  w0, MaxSafetyBonus
   if Us = Black
             eor  w23, w23, 7
   end if
     ; w23 = relative_rank(Us, ksq)+1
             add  w23, w23, 1
-    ; w1 = file of ksq
-            and  w1, w1, 7
             mov  w4, 13
             mov  w5, 2
            madd  w22, w1, w4, w5
@@ -891,7 +913,7 @@ macro ShelterStorm Us
     ; w26 = rkUs
 
             lsl  w2, w22, 5
-    ; ShelterWeakness and StormDanger are twice as big
+    ; ShelterStrength and StormDanger are twice as big
     ; to avoid an anoying min(f,FILE_H-f) in ShelterStorm
 
 
@@ -899,13 +921,13 @@ macro ShelterStorm Us
     ; esi = rkUs+1
 
            _lea  x11, StormDanger_BlockedByKing
-           _lea  x8, ShelterWeakness_No - 4*1
+           _lea  x8, ShelterStrengthArray - 4*1
             add  x8, x8, x2
             add  x11, x11, x2
             cmp  w1, w22
             add  w22, w22, 1
             bne  @1f
-           _lea  x8, ShelterWeakness_Yes - 4*1
+           _lea  x8, ShelterStrengthArray - 4*1
             add  x8, x8, x2
             cmp  w27, w23
             beq  @2f
@@ -922,7 +944,7 @@ macro ShelterStorm Us
             add  x11, x11, x2
     @2:
             ldr  w4, [x8, x26, lsl 2]
-            sub  w0, w0, w4
+            add  w0, w0, w4
             ldr  w4, [x11, x27, lsl 2]
             sub  w0, w0, w4
 
@@ -960,10 +982,11 @@ macro EvalThreats Us
   if Us = White
 	AttackedBy_Us       = x12
 	AttackedBy_Them     = x13
-        AttackedBy2_Us    = x14
-        AttackedBy2_Them  = x15
-        AttackedBy_UsPawn   = x16
-        AttackedBy_ThemPawn = x17
+  AttackedBy2_Us    = x14
+  AttackedBy2_Them  = x15
+  AttackedBy_UsPawn   = x16
+  AttackedBy_ThemPawn = x17
+  notStronglyProtected = x5
 	Pieces_Pawn	= x19
 	Pieces_Us	= x28
 	Pieces_Them	= x29
@@ -976,10 +999,11 @@ macro EvalThreats Us
   else
 	AttackedBy_Us       = x13
 	AttackedBy_Them     = x12
-        AttackedBy2_Us    = x15
-        AttackedBy2_Them  = x14
-        AttackedBy_UsPawn   = x17
-        AttackedBy_ThemPawn = x16
+  AttackedBy2_Us    = x15
+  AttackedBy2_Them  = x14
+  AttackedBy_UsPawn   = x17
+  AttackedBy_ThemPawn = x16
+  notStronglyProtected = x5
 	Pieces_Pawn	= x19
 	Pieces_Us	= x29
 	Pieces_Them	= x28
@@ -1151,20 +1175,6 @@ WeakDone:
           mov32  w4, ThreatByPawnPush
       Muladdsub  Us, w26, w0, w4, w26
 
-            ldp  x2, x3, [sp, EvalInfo.attackedBy+8*(8*Us+Bishop)]
-            ldr  x1, [sp, EvalInfo.attackedBy+8*(8*Them+QUEEN_DIAGONAL)]
-            ldr  x4, [sp, EvalInfo.attackedBy+8*(8*Them+Queen)]
-            bic  x0, AttackedBy2_Us, AttackedBy2_Them
-            bic  x0, x0, Pieces_Us
-            and  x2, x2, x1
-            bic  x1, x4, x1
-            and  x1, x1, x3
-            orr  x2, x2, x1
-            and  x0, x0, x2
-         Popcnt  x0, x0, x2
-          mov32  w4, ThreatByAttackOnQueen
-      Muladdsub  Us, w26, w0, w4, w26
-
     ; // Bonus for knight threats on enemy queen
             ldrb w1, [x20, Pos.pieceEnd + (8*Them+Queen)]
             and  w1, w1, 15
@@ -1172,19 +1182,60 @@ WeakDone:
             bne  @f
             ldr  x0, [sp, EvalInfo.attackedBy+8*(8*Us+Knight)]
             ldrb w8, [x20, Pos.pieceList + 16*(8*Them + Queen)]
-            ; w8 = queen sq
+            ; w8 = pos.square<QUEEN>(Them) = s
             _lea  x6, KnightAttacks
             ldr  x9, [x6, x8, lsl 3] ; x9 = qword[KnightAttacks+8*r8]
             and  x0, x0, x9
-            ldr   x8, [x20, Pos.typeBB + 8*King]
-            orr  x8, x8, Pieces_Pawn   
-            and  x8, x8, Pieces_Us
-            bic  x0, x0, x8 ; dest=x0, and(x0), not(x8)
-            bic  x0, x0, x5 ; dest=x0, and(x0), not(x10)
+            ;mov  x1, x5
+            ldr  x1, [sp, EvalInfo.mobilityArea + 8*Us]
+            bic  x1, x1, x5
+            and  x0, x0, x1
+
             Popcnt x0, x0, x2
             mov32  w4, KnightOnQueen
             Muladdsub  Us, w26, w0, w4, w26
+
+            mov  x1, Pieces_Them
+            orr  x1, x1, Pieces_Us
+            BishopAttacks  x0, x8, x1, x2, x4
+            ldr  x2, [sp, EvalInfo.attackedBy + 8*(8*Us + Bishop)]
+            and  x0, x0, x2
+            RookAttacks  x9, x8, x1, x2, x4
+            ldr  x2, [sp, EvalInfo.attackedBy + 8*(8*Us + Rook)]
+            and  x9, x9, x2
+            orr  x0, x0, x9
+            ldr  x2, [sp, EvalInfo.mobilityArea + 8*Us]
+            and  x0, x0, x2
+            bic  x0, x0, notStronglyProtected
+            ldr  x2, [sp, EvalInfo.attackedBy2 + 8*Us]
+            and  x0, x0, x2
+            _popcnt x0, x0, x2
+            mov32  w4, SliderOnQueen
+            Muladdsub  Us, w26, w0, w4, w26
+
         @@:
+            ldr  x0, [x20, Pos.typeBB + 8*King]
+            orr  x0, x0, Pieces_Pawn
+            and  x0, x0, Pieces_Us
+            eor  x0, x0, Pieces_Us
+            ldr  x2, [sp, EvalInfo.attackedBy + 8*(8*Us + 0)]
+            and  x0, x0, x2
+            _popcnt  x0, x0, x2
+            mov32  w4, Connectivity
+            Muladdsub  Us, w26, w0, w4, w26
+
+            mov  x8, Pieces_Pawn
+            bic  x8, Pieces_Them, x8
+            and  x8, x8, AttackedBy_Us
+            mov  x9, AttackedBy2_Us
+            bic  x8, x8, x9
+            and  x8, x8, AttackedBy_Them
+            mov  x9, AttackedBy2_Them
+            bic  x8, x8, x9
+            _popcnt  x8, x8, x2
+            mov32  w4, Overload
+            Muladdsub  Us, w26, w8, w4, w26
+
 end macro
 
 
@@ -1308,7 +1359,7 @@ NextPawn:
 
             eor  Pieces_Them, Pieces_Them, Pieces_Us
             sub  x5, x8, Up
-    RookAttacks  x0, x5, Pieces_Them, x2, x4 
+    RookAttacks  x0, x5, Pieces_Them, x2, x4
             eor  Pieces_Them, Pieces_Them, Pieces_Us
             ldr  x1, [x20, Pos.typeBB + 8*Rook]
             ldr  x4, [x20, Pos.typeBB + 8*Queen]
@@ -1425,15 +1476,15 @@ macro EvalSpace Us
         SpaceMask      = SpaceMask and (Rank7BB or Rank6BB or Rank5BB)
   end if
 
-    ; rdx = pos.pieces(Us, PAWN)
-            and  x2, Pieces_Us, Pieces_Pawn
-
-            bic  x0, AttackedBy_Them, AttackedBy_Us
-            orr  x0, x0, AttackedBy_ThemPawn
-            orr  x0, x0, x2
-          mov64  x1, SpaceMask
-    ; rax = safe
-            bic  x0, x1, x0
+          mov64  x2, SpaceMask
+            mov  x0, Pieces_Us
+            mov  x1, AttackedBy_ThemPawn
+            and  x0, x0, Pieces_Pawn
+            bic  x0, x2, x0
+            bic  x0, x0, x1
+            mov  x2, Pieces_Us
+            and  x2, x2, Pieces_Pawn
+            mov  x1, x2
 
   if Us = White
             lsr  x1, x2, 8
@@ -1659,9 +1710,20 @@ Evaluate.DoPawnEvalReturn:
             and  x2, x2, x9
             orr  x0, x0, x17
             orr  x2, x2, x16
+            
             ldr  x5, [x20, Pos.typeBB + 8*King]
+            ldr  x9, [x20, Pos.typeBB + 8*Queen]
+            
             and  x4, x5, x28
             and  x5, x5, x29
+            
+            and  x8, x9, x28
+            and  x9, x9, x29
+            
+            orr  x4, x4, x8
+            orr  x5, x5, x9
+            
+
             orr  x0, x0, x4
             orr  x2, x2, x5
             mvn  x0, x0
@@ -1739,6 +1801,16 @@ Evaluate.SkipSpace:
             sub  w2, w2, 17
             add  w8, w8, w0, lsl 2
             add  w8, w8, w2, lsl 3
+
+           ldr  w2, [x21, State.npMaterial + 2*0]
+           sbfx  w9, w2, 0, 16
+           ldr  w2, [x21, State.npMaterial + 2*1]
+           sbfx  w1, w2, 0, 16
+           add  x9, x9, x1
+           cmp  x9, 1
+           sbc  x9, x9, x9
+           and  x9, x9, 48
+           add  x8, x8, x9
 
            sbfx  w9, w26, 0, 16
             asr  w9, w9, 31
@@ -1843,7 +1915,7 @@ Evaluate.NotOppBishop:
             beq  Evaluate.ScaleFactorDone
          Popcnt  x1, x11, x9
             cmp  w1, 3
-            bhs  Evaluate.ScaleFactorDone        
+            bhs  Evaluate.ScaleFactorDone
             mov  w4, 7
             mov  w5, 37
            madd  w0, w1, w4, w5

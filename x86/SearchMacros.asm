@@ -4,7 +4,7 @@ RazorMargin2 = 604
 
 ; CapturePruneMargin[] =
 CapturePruneMargin0 = 0    ; 0
-CapturePruneMargin1 = 253  ; 1 * PawnValueEg * 1055 / 1000 
+CapturePruneMargin1 = 253  ; 1 * PawnValueEg * 1055 / 1000
 CapturePruneMargin2 = 500  ; 2 * PawnValueEg * 1042 / 1000
 CapturePruneMargin3 = 693  ; 3 * PawnValueEg * 963  / 1000
 CapturePruneMargin4 = 996  ; 4 * PawnValueEg * 1038 / 1000
@@ -702,7 +702,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		mov   ecx, dword[.ttMove]
 		test   ecx, ecx
 		jnz   .10skip
-		cmp   r8d, 6*ONE_PLY
+		cmp   r8d, 8*ONE_PLY
 		 jl   .10skip
 		lea   r8d, [3*r8]
 		sar   r8d, 2
@@ -714,10 +714,6 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		mov   byte[rbx+State.skipEarlyPruning],	-1
 		call   Search_Pv
   else
-		mov   eax, dword[rbx+State.staticEval]
-		add   eax, 128
-		cmp   eax, dword[.beta]
-		 jl   .10skip
 		mov   ecx, dword[.alpha]
 		mov   edx, dword[.beta]
 		movzx   r9d, byte[.cutNode]
@@ -1465,9 +1461,9 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		jmp   .18NoNewValue
   end if
 .18fail_high:
-	     Assert   ge, edi, dword[.beta], 'did not fail high	in Search'
+	     Assert   ge, edi, dword[.beta], 'did not fail high in Search'
 		mov  ecx, dword[rbx + State.statScore]
-		mov  eax, 0
+		xor  eax, eax
 		test  ecx, ecx
 		cmovns  eax, dword[rbx + State.statScore]
 		mov  dword[rbx + State.statScore], eax
@@ -1477,7 +1473,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		mov   eax, dword[.quietCount]
 		mov   edx, dword[.captureCount]
 		cmp   ecx, dword[.bestMove]
-		 je   .MovePickLoop
+		je   .MovePickLoop
 		cmp   byte[.captureOrPromotion], 0
 		jnz   @1f
 		cmp   eax, 64
@@ -1486,7 +1482,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		add   eax, 1
 		mov   dword[.quietCount], eax
 		jmp   .MovePickLoop
-    @1:
+  @1:
 		cmp   edx, 32
 		jae   .MovePickLoop
 		mov   dword[.capturesSearched+4*rdx], ecx
