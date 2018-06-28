@@ -141,8 +141,8 @@ macro EvalPieces Us, Pt
 	macro subadd a,	b
 		sub  a,	b
 	end macro
-	Them			  = Black
-	Down			  = DELTA_S
+	Them			= Black
+	Down 			= DELTA_S
 	OutpostRanks	  = 0x0000FFFFFF000000
   else
 	;addsub		  equ sub
@@ -153,8 +153,8 @@ macro EvalPieces Us, Pt
 	macro subadd a,	b
 		add  a,	b
 	end macro
-	Them			  = White
-	Down			  = DELTA_N
+	Them			= White
+	Down 			= DELTA_N
 	OutpostRanks	  = 0x000000FFFFFF0000
   end if
 
@@ -306,8 +306,7 @@ OutpostElse:
 		cmovnz   esi, ecx
 OutpostDone:
 
-	; Penalty according to number of pawns on the same color square as the
-	; bishop, bigger when the center files are blocked with pawns.
+	; Penalty for pawns on the same color square as the bishop
     if Pt = Bishop
 		xor  ecx, ecx
 		mov  rax, DarkSquares
@@ -316,22 +315,20 @@ OutpostDone:
 		movzx  eax, byte[rcx+PawnEntry.pawnsOnSquares+2*Us]
 		imul  eax, BishopPawns
 		mov  r8, qword[rbp+Pos.typeBB+8*Pawn]
-		and  r8, r11 
-		; r8 = PiecesUs = pos.pieces(Us, PAWN)
-		mov  r9, r13 
-		; r9 = pos.pieces()
+		and  r8, r11
+		mov  r9, r13
 		ShiftBB  Down, r9, rcx
 		and  r8, r9
 		mov  r9, (FileCBB or FileDBB or FileEBB or FileFBB)
 		and  r8, r9
 		_popcnt  r8, r8, rcx
-		inc  r8
+		add  r8, 1
 		imul  eax, r8d
-		subadd  esi, eax
+		subadd   esi, eax
 
     ; Bonus for	bishop on a long diagonal which	can "see" both center squares
-		mov   rdx, qword[rbp + Pos.typeBB + 8*Pawn]
-		BishopAttacks  rax, r14, rdx, rcx
+		mov   rdx, qword[rbp	+ Pos.typeBB + 8*Pawn]
+      BishopAttacks   rax, r14,	rdx,	rcx
 		bts   rax, r14
 		lea   edx, [rsi	+ (Them	- Us)*LongRangedBishop]
 		mov   r8, (FileDBB or FileEBB) and (Rank4BB or Rank5BB)
@@ -2165,7 +2162,6 @@ end iterate
 		xor   r10d, r10d	; partial index into quadatic
 		mov   r14d, 1
  .Piece1Loop:
-		;mov   r11d, dword[DoMaterialEval_Data.Linear+4*r14]        ; v
 		xor   r11d, r11d
 		mov   r13d, 1
 
