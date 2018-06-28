@@ -89,7 +89,7 @@ namespace {
   constexpr Value SpaceThreshold = Value(12222);
 
   // KingAttackWeights[PieceType] contains king attack weights by piece type
-  constexpr int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 77, 55, 44, 10 };
+  constexpr int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 78, 56, 45, 11 };
 
   // Penalties for enemy's safe checks
   constexpr int QueenSafeCheck  = 780;
@@ -142,32 +142,32 @@ namespace {
 
   // ThreatByKing[on one/on many] contains bonuses for king attacks on
   // pawns or pieces which are not pawn-defended.
-  constexpr Score ThreatByKing[] = { S(25, 57), S(4, 139) };
+  constexpr Score ThreatByKing[] = { S(3, 65), S(9, 145) };
 
   // PassedRank[Rank] contains a bonus according to the rank of a passed pawn
   constexpr Score PassedRank[RANK_NB] = {
-    S(0, 0), S(7, 10), S(7, 26), S(14, 31), S(42, 63), S(178, 167), S(279, 244)
+    S(0, 0), S(5, 7), S(5, 13), S(32, 42), S(70, 70), S(172, 170), S(217, 269)
   };
 
   // PassedFile[File] contains a bonus according to the file of a passed pawn
   constexpr Score PassedFile[FILE_NB] = {
-    S( 17,  6), S(-4,  7), S( 2,-12), S(-17,-14),
-    S(-17,-14), S( 2,-12), S(-4,  7), S( 17,  6)
+    S(  9, 10), S(2, 10), S(1, -8), S(-20,-12),
+    S(-20,-12), S(1, -8), S(2, 10), S(  9, 10)
   };
 
   // PassedDanger[Rank] contains a term to weight the passed score
-  constexpr int PassedDanger[RANK_NB] = { 0, 0, 0, 3, 6, 12, 21 };
+  constexpr int PassedDanger[RANK_NB] = { 0, 0, 0, 2, 7, 12, 19 };
 
   // KingProtector[PieceType-2] contains a penalty according to distance from king
-  constexpr Score KingProtector[] = { S(3, 5), S(5, 3), S(3, 0), S(0, -2) };
+  constexpr Score KingProtector[] = { S(3, 5), S(4, 3), S(3, 0), S(1, -1) };
 
   // Assorted bonuses and penalties
   constexpr Score BishopPawns        = S(  3,  5);
-  constexpr Score CloseEnemies       = S(  8,  0);
+  constexpr Score CloseEnemies       = S(  7,  0);
   constexpr Score Connectivity       = S(  3,  1);
   constexpr Score CorneredBishop     = S( 50, 50);
   constexpr Score Hanging            = S( 52, 30);
-  constexpr Score HinderPassedPawn   = S(  5,  2);
+  constexpr Score HinderPassedPawn   = S(  8,  1);
   constexpr Score KnightOnQueen      = S( 21, 11);
   constexpr Score LongDiagonalBishop = S( 22,  0);
   constexpr Score MinorBehindPawn    = S( 16,  0);
@@ -175,12 +175,12 @@ namespace {
   constexpr Score PawnlessFlank      = S( 20, 80);
   constexpr Score RookOnPawn         = S(  8, 24);
   constexpr Score SliderOnQueen      = S( 42, 21);
-  constexpr Score ThreatByPawnPush   = S( 49, 30);
+  constexpr Score ThreatByPawnPush   = S( 47, 26);
   constexpr Score ThreatByRank       = S( 16,  3);
-  constexpr Score ThreatBySafePawn   = S(186,140);
+  constexpr Score ThreatBySafePawn   = S(175,168);
   constexpr Score TrappedRook        = S( 92,  0);
   constexpr Score WeakQueen          = S( 50, 10);
-  constexpr Score WeakUnopposedPawn  = S( 14, 19);
+  constexpr Score WeakUnopposedPawn  = S(  5, 25);
 
 #undef S
 
@@ -420,7 +420,7 @@ namespace {
                                            : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
 
     const Square ksq = pos.square<KING>(Us);
-    Bitboard weak, b, b1, b2, safe, unsafeChecks;
+    Bitboard weak, b, b1, b2, safe, unsafeChecks, pinned;
 
     // King shelter and enemy pawns storm
     Score score = pe->king_safety<Us>(pos, ksq);
@@ -428,7 +428,7 @@ namespace {
     // Main king safety evaluation
     if (kingAttackersCount[Them] > 1 - pos.count<QUEEN>(Them))
     {
-        int kingDanger = -mg_value(score);
+        int kingDanger = 0;
         unsafeChecks = 0;
 
         // Attacked squares defended at most once by our queen or king
@@ -472,13 +472,15 @@ namespace {
         // Unsafe or occupied checking squares will also be considered, as long as
         // the square is in the attacker's mobility area.
         unsafeChecks &= mobilityArea[Them];
+        pinned = pos.blockers_for_king(Us) & pos.pieces(Us);
 
         kingDanger +=        kingAttackersCount[Them] * kingAttackersWeight[Them]
-                     + 64  * kingAttacksCount[Them]
-                     + 182 * popcount(kingRing[Us] & weak)
-                     + 128 * popcount(pos.blockers_for_king(Us) | unsafeChecks)
-                     - 857 * !pos.count<QUEEN>(Them)
-                     +  31 ;
+                     + 102 * kingAttacksCount[Them]
+                     + 191 * popcount(kingRing[Us] & weak)
+                     + 143 * popcount(pinned | unsafeChecks)
+                     - 848 * !pos.count<QUEEN>(Them)
+                     -   9 * mg_value(score) / 8
+                     +  40;
 
         // Transform the kingDanger units into a Score, and subtract it from the evaluation
         if (kingDanger > 0)
