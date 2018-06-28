@@ -7,15 +7,15 @@ LongRangedBishop    = ( 22 shl 16) + (  0)
 RookOnPawn          = (  8 shl 16) + ( 24)
 TrappedRook         = ( 92 shl 16) + (  0)
 WeakQueen           = ( 50 shl 16) + ( 10)
-CloseEnemies        = (  7 shl 16) + (  0)
+CloseEnemies        = (  8 shl 16) + (  0)
 PawnlessFlank       = ( 20 shl 16) + ( 80)
-ThreatBySafePawn    = (175 shl 16) + (168)
+ThreatBySafePawn    = (165 shl 16) + (133)
+ThreatByPawnPush    = ( 49 shl 16) + ( 30)
 ThreatByRank        = ( 16 shl 16) + (  3)
 Hanging             = ( 52 shl 16) + ( 30)
-WeakUnopposedPawn   = (  5 shl 16) + ( 25)
-ThreatByPawnPush    = ( 47 shl 16) + ( 26)
+WeakUnopposedPawn   = (  5 shl 16) + ( 26)
 SliderOnQueen       = ( 42 shl 16) + ( 21)
-HinderPassedPawn    = (  8 shl 16) + (  1)
+HinderPassedPawn    = (  5 shl 16) + (  -1)
 TrappedBishopA1H1   = ( 50 shl 16) + ( 50)
 
 LazyThreshold = 1500
@@ -1651,13 +1651,13 @@ end virtual
 
 		or   rax, qword[.ei.attackedBy+8*(8*Black+Pawn)]
 		or   rdx, qword[.ei.attackedBy+8*(8*White+Pawn)]
-		
+
 		or   rax, rcx
 		or   rdx, rsi
 
 		not   rax
 		not   rdx
-		
+
 		mov   qword[.ei.mobilityArea+8*White], rax
 		mov   qword[.ei.mobilityArea+8*Black], rdx
 
