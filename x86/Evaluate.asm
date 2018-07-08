@@ -763,7 +763,7 @@ macro ShelterStorm Us
 		Assert   e, PiecesThem, qword[rbp+Pos.typeBB+8*Them], 'assertion PiecesThem failed in EvalPassedPawns'
 
 	; ecx = ksq
-		mov   r13d, ecx ; branching starts here r13d = shift<Down>(b) & ksq
+		mov   r13d, ecx
 		shr   r13d, 3
 		mov   r8, qword[InFrontBB+8*(8*Us+r13)]
 		or   r8, qword[RankBB+8*r13]
@@ -881,7 +881,7 @@ macro ShelterStorm Us
 	@1:
 		add   eax, dword[r8 + 4*rsi]
 		sub   eax, dword[r11 + 4*rdi]
-        lea   r12d, [r12+1] ; increment file
+        lea   r12d, [r12+1]
   end macro
 
     ShelterStormAcc
@@ -1249,9 +1249,9 @@ NextPawn:
 		imul   eax, HinderPassedPawn
 		subadd   dword[.ei.score], eax
 
-                mov  edi, dword[RankFactor + 4*rcx]
+                mov  edi, dword[PassedDanger + 4*rcx]
 	; ecx = r
-        ; edi = RankFactor[r]
+        ; edi = PassedDanger[r]
 
 
   if Us = White

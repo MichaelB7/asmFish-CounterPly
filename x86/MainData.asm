@@ -49,7 +49,7 @@ szGreeting:
   end if
     NewLineData
 szGreetingEnd:
-    db 'id author TypingALot'
+    db 'id author TypingALittle based on work by TypingALot'
     NewLineData
     db 'option name Hash type spin default 16 min 1 max '
     IntegerStringData MAX_HASH
@@ -374,8 +374,8 @@ L_339:							; byte
 
 L_340:							; byte
 	db 4DH, 61H, 70H, 56H, 69H, 65H, 77H, 4FH	; 001E _ MapViewO
-	db 66H, 46H, 69H, 6CH, 65H, 28H, 29H, 20H	; 0026 _ fFile() 
-	db 66H, 61H, 69H, 6CH, 65H, 64H, 2CH, 20H	; 002E _ failed, 
+	db 66H, 46H, 69H, 6CH, 65H, 28H, 29H, 20H	; 0026 _ fFile()
+	db 66H, 61H, 69H, 6CH, 65H, 64H, 2CH, 20H	; 002E _ failed,
 	db 6EH, 61H, 6DH, 65H, 20H, 3DH, 20H, 25H	; 0036 _ name = %
 	db 73H, 25H, 73H, 2CH, 20H, 65H, 72H, 72H	; 003E _ s%s, err
 	db 6FH, 72H, 20H, 3DH, 20H, 25H, 6CH, 75H	; 0046 _ or = %lu
@@ -717,5 +717,3 @@ wdl_to_Value5:
 WDLtoDTZ db -1,-101,0,101,1
 
 end if
-
-

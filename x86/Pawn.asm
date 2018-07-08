@@ -4,7 +4,7 @@ macro EvalPawns Us
 	;     rdi address of pawn table entry
 	; out esi score
   local Them, Up, Right, Left
-  local Isolated0, Isolated1, Backward0, Backward1, Doubled
+  local Isolated, Backward, Doubled
   local NextPiece, AllDone, Done, WritePawnSpan
   local Neighbours_True, Neighbours_True__Lever_False
   local Neighbours_True__Lever_False__RelRank_small, Neighbours_False
@@ -22,15 +22,11 @@ macro EvalPawns Us
 	Left  = DELTA_SE
   end if
 
-  Isolated0    = (27 shl 16) + (30)
-  Isolated1    = (13 shl 16) + (18)
-  Isolated     = (13 shl 16) + (18)
+  Isolated     = (13 shl 16) + (16)
 
-  Backward0    = (40 shl 16) + (26)
-  Backward1    = (24 shl 16) + (12)
-  Backward     = (24 shl 16) + (12)
+  Backward     = (17 shl 16) + (11)
 
-  Doubled     = ((18 shl 16) + (38))
+  Doubled     =  (13 shl 16) + (40)
 
             xor   eax, eax
             mov   qword[rdi+PawnEntry.passedPawns+8*Us], rax
@@ -111,29 +107,60 @@ NextPiece:
             mov   rax, qword[PawnAttacks+8*(64*Us+rcx)]
            test   r9, r9
              jz   Neighbours_False
-Neighbours_True:
-           test   rax, r14
-            jnz   Neighbours_True__Lever_True
-Neighbours_True__Lever_False:
-            mov   rax, r9
-             or   rax, r10
-  if Us = White
-            cmp   ecx, SQ_A5
-            jae   Neighbours_True__Lever_False__RelRank_big
-         _tzcnt   rax, rax
-  else
-            cmp   ecx, SQ_A5
-             jb   Neighbours_True__Lever_False__RelRank_big
-            bsr   rax, rax
-  end if
+
 Neighbours_True__Lever_False__RelRank_small:
-            shr   eax, 3
-            mov   rax, qword[RankBB+8*rax]
-            and   rdx, rax
-        ShiftBB   Up, rdx
-             or   rdx, rax
+
+             mov  rdx, [PawnAttackSpan+8*(64*Them+rcx+Up)]
+             and  rdx, r13 ; & ourPawns
+
+         ; logical NOT (!)
+         ; (rdx == 0)? 1 : 0
+         ; logical NOT (!)         ; [Latency, Reciprocal Throughput]
+             xor  r9, r9           ; [1, .25]
+             mov  rax, 1           ; [0, .25]
+             test  rdx, rdx        ; [1, .25]
+             cmovz  rdx, rax       ; [2, .50]
+             cmovnz  rdx, r9       ; [1, .50]
+                                   ; --------
+             ; rdx = !A            ; Total: [5,  1.75 clock-cycles/instruction]
+
+         ; Alternate form of logical NOT (!)
+            ; (rdx == 0)? 1 : 0
+            ; - Slightly less efficient, but has less dependencies
+            ; - Use this when available registers are scarce
+             ; neg  rdx            ; [6,   1]
+             ; sbb  rdx, rdx       ; [2,   1]
+             ; add  rdx, 1         ; [1, .25]
+                                   ; --------
+             ; rdx = !A            ; Total: [9,  2.25 clock-cycles/instruction]
+
+        ; Prepare for logical AND (&&)
+             mov  eax, ecx
+             lea  rax, [rcx+Up]
+             shr  rax, 3
+             mov  r9, qword[RankBB+8*rax]
+             lea  rax, [rcx+Up]
+             and  rax, 7
+             mov  rax, qword[FileBB+8*rax]
+             and  rax, r9
+
+             mov  r9, qword[PawnAttacks+8*(64*Us+rcx+Up)]
+             and  r9, r14
+             or   r9, rax
+             and  r9, r10
+
+        ; logical AND (&&)
+            xor  rax, rax
+            ; r9 is already here
+            test  rdx, rdx
+            setne  al
+            xor  rdx, rdx
+            test  r9, r9
+            setne  dl
+            and  edx, eax
+        ; edx = !A && B
+
             mov   eax, -Backward
-            and   rdx, r10
          cmovnz   edx, eax
     ; edx = backwards ? Backward[opposed] : 0
             lea   eax, [r11 + 1]
@@ -142,21 +169,11 @@ Neighbours_True__Lever_False__RelRank_small:
 Neighbours_False:
             mov   edx, -Isolated
             lea   r10d, [r11 + 1]
-            jmp   Continue
 
-Neighbours_True__Lever_True:
-Neighbours_True__Lever_False__RelRank_big:
-            xor   edx, edx
-            xor   r10, r10
 Continue:
         _popcnt   rax, r8, r9
-    if CPU_HAS_POPCNT = 1
-         popcnt   r9, rbx
-    else
-           push   r10             
         _popcnt   r9, rbx, r10
-            pop   r10
-    end if
+
             neg   r11d
             neg   rbx
             adc   r11d, r11d
@@ -227,7 +244,7 @@ PopLoop:
             mov   r9, qword[PawnAttacks+8*(64*Us+r9)]
             and   r9, r14
           _blsr   r11, r9
-           setz   al                
+           setz   al
              or   edx, eax
             shl   rax, cl
              or   qword[rdi+PawnEntry.passedPawns+8*Us], rax
