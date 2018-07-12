@@ -49,7 +49,7 @@ szGreeting:
   end if
     NewLineData
 szGreetingEnd:
-    db 'id author TypingALittle based on work by TypingALot'
+    db 'id author TypingALot'
     NewLineData
     db 'option name Hash type spin default 16 min 1 max '
     IntegerStringData MAX_HASH
