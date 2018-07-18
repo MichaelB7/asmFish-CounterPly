@@ -172,7 +172,7 @@ Neighbours_False:
 
 Continue:
         _popcnt   rax, r8, r9
-        _popcnt   r9, rbx, r10
+         _popcnt  r9, rbx, rbx
 
             neg   r11d
             neg   rbx
