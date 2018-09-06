@@ -97,8 +97,8 @@ FileHSkip:
             ShiftBB  East, x8, x8
             orr  x8, x8, x2
 FileASkip:
-            and  x9, x9, AttackedBy_UsPawn
-        _popcnt  x2, x9, x1
+            and  x0, x8, AttackedBy_UsPawn
+        _popcnt  x2, x0, x1
             mov  w0, 0
             str  w0, [sp, EvalInfo.kingAttackersWeight + 4*Us]
             str  w0, [sp, EvalInfo.kingAdjacentZoneAttacksCount + 4*Us]
@@ -175,21 +175,21 @@ macro EvalPieces Us, Pt
   if Pt = Knight
         Outpost0 = ((22 shl 16) + ( 6))
         Outpost1 = ((36 shl 16) + (12))
-        KingAttackWeight = 78
+        KingAttackWeight = 77
         MobilityBonus equ MobilityBonus_Knight
         KingProtector_Pt = ((-3 shl 16) + (-5))
   else if Pt = Bishop
         Outpost0 = (( 9 shl 16) + (2))
         Outpost1 = ((15 shl 16) + (5))
-        KingAttackWeight = 56
+        KingAttackWeight = 55
         MobilityBonus equ MobilityBonus_Bishop
         KingProtector_Pt = ((-4 shl 16) + (-3))
   else if Pt = Rook
-	KingAttackWeight = 45
+	KingAttackWeight = 44
 	MobilityBonus equ MobilityBonus_Rook
         KingProtector_Pt = ((-3 shl 16) + (0))
   else if Pt = Queen
-	KingAttackWeight = 11
+	KingAttackWeight = 10
 	MobilityBonus equ MobilityBonus_Queen
         KingProtector_Pt = ((-1 shl 16) + (1))
   else
@@ -680,8 +680,8 @@ KnightDone:
            ldr  x10, [sp, EvalInfo.mobilityArea + 8*Them]
            and  x9, x9, x10
 
-           ldr  x2, [sp, EvalInfo.pinnedPieces + 8*Us]
-           orr x2, x2, x9
+           ldr  x2, [x21, State.blockersForKing + 8*Us]
+           orr  x2, x2, x9
 
            _popcnt x4, x2, x1
            mov  w1, 143
@@ -922,7 +922,7 @@ macro ShelterStorm Us
             lsr  w27, w27, 3
             eor  w27, w27, 7
     end if
-    ; w27 = rkThem
+    ; w27 = theirRank
 
     if Us = White
            _lea  x6, FileBB
@@ -943,37 +943,51 @@ macro ShelterStorm Us
             eor  w26, w26, 7
     end if
 
-    ; w26 = rkUs
+    ; w26 = ourRank
 
             lsl  w2, w22, 5
     ; ShelterStrength and StormDanger are twice as big
     ; to avoid an anoying min(f,FILE_H-f) in ShelterStorm
 
-
+            mov  w8, w26
             add  w26, w26, 1
-    ; esi = rkUs+1
 
-            cmp  w1, w22
+    ; esi = ourRank+1
+
+            cmp  w27, 0
             bne  @1f
-; Rank Comparisons
+            cmp  w8, 0
+            beq  @f
+
+; if (ourRank || theirRank)
+            cmp  w4, 0
+            bne  @1f
+            cmp  w8, 0
+            beq  @f
+
     @1:
-           _lea  x8, ShelterStrengthArray - 4*1
-           add  x8, x8, x2
-           _lea  x11, StormDanger_NoFriendlyPawn
-            add  x11, x11, x2
-            cmp  w26, 1
+            cmp  w8, 0
             beq  @2f
            _lea  x11, StormDanger_BlockedByPawn
             add  x11, x11, x2
             cmp  w26, w27
-            beq  @2f
+            beq  @3f
+
+    @2:
            _lea  x11, StormDanger_Unblocked
             add  x11, x11, x2
-    @2:
-            ldr  w4, [x8, x26, lsl 2]
-            add  w0, w0, w4
+
+    @3:
             ldr  w4, [x11, x27, lsl 2]
             sub  w0, w0, w4
+
+    @@:
+            _lea  x8, ShelterStrengthArray - 4*1
+            add  x8, x8, x2
+
+            ldr  w4, [x8, x26, lsl 2]
+            add  w0, w0, w4
+
             add  x22, x22, 1
 
   end repeat

@@ -503,9 +503,12 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		 jl   .8skip
 
 		cmp   eax, VALUE_MATE_IN_MAX_PLY
-	     cmovge   eax, edx
+		cmovge   eax, edx
 		mov   edi, eax
 	; edi = nullValue
+
+		cmp   dword[rbp - Thread.rootPos + Thread.nmp_ply], 0
+		jne   .Return
 
 		lea   ecx, [rdx+VALUE_KNOWN_WIN-1]
 		cmp   ecx, 2*(VALUE_KNOWN_WIN-1)
@@ -514,8 +517,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		mov   ecx, dword[.depth]
 		cmp   ecx, 12*ONE_PLY
 		 jl   .Return
-		cmp   dword[rbp - Thread.rootPos + Thread.nmp_ply], 0
-		jne   .Return
+
 .8check:
 		lea   eax, [3*rsi]
 		lea   r8d, [rax + 3]
@@ -1454,10 +1456,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
   end if
 .18fail_high:
 	     Assert   ge, edi, dword[.beta], 'did not fail high in Search'
-		mov  ecx, dword[rbx + State.statScore]
 		xor  eax, eax
-		test  ecx, ecx
-		cmovns  eax, dword[rbx + State.statScore]
 		mov  dword[rbx + State.statScore], eax
 		jmp  .MovePickDone
 .18NoNewValue:
