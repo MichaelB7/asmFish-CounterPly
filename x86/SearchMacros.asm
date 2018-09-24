@@ -43,6 +43,7 @@ macro search RootNode, PvNode
     .alpha		rd 1
     .beta		rd 1
     .depth		rd 1
+    .statBonusDepth  rd 1
     .bestValue		rd 1
     .value		rd 1
     .evalu		rd 1
@@ -703,9 +704,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		jnz   .10skip
 		cmp   r8d, 8*ONE_PLY
 		 jl   .10skip
-		lea   r8d, [3*r8]
-		sar   r8d, 2
-		sub   r8d, 2*ONE_PLY
+		 sub  r8d, 7*ONE_PLY
   if PvNode = 1
 		mov   ecx, dword[.alpha]
 		mov   edx, dword[.beta]
@@ -992,7 +991,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		sub   eax, 1
 		add   ecx, dword[.reductionOffset]
 		add   eax, edx
-		mov   r9d, dword[Reductions + 4*(rcx	+ 2*64*64*PvNode)]
+		mov   r9d, dword[Reductions + 4*(rcx + 2*64*64*PvNode)]
 		mov   dword[.reduction], r9d
 		mov   dword[.newDepth],	eax
 
@@ -1124,7 +1123,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		xor   rax, qword[Zobrist_Pieces+r14+8*r12]
 		xor   rax, qword[Zobrist_Pieces+r14+8*r13]
 		xor   rax, qword[Zobrist_Pieces+r15+8*r13]
-                mul   dword[mainHash.clusterCount]
+		mul   dword[mainHash.clusterCount]
 		shl   rdx, 5
 		add   rdx, qword[mainHash.table]
 	prefetchnta   [rdx]
@@ -1136,13 +1135,13 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		mov   ecx, dword[.move]
 	       call   Move_IsLegal
 	       test   rax, rax
-		 jz   .IllegalMove
+		jz   .IllegalMove
   end if
 		mov   ecx, dword[.move]
 		mov   eax, dword[.moved_piece_to_sq]
 		shl   eax, 2+4+6
 		add   rax, qword[rbp+Pos.counterMoveHistory]
-		mov   dword[rbx+State.currentMove],	ecx
+		mov   dword[rbx+State.currentMove], ecx
 		mov   qword[rbx+State.counterMoves], rax
 		xor   eax, eax
 		xor   edx, edx
@@ -1167,21 +1166,27 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		cmp   dl, byte[rbp-Thread.rootPos+Thread.selDepth]
 		jae   .15skip
 		cmp   byte[rbx-1*sizeof.State+State.ply], 3
-		 ja   @1f
+		ja    @1f
 		cmp   edx, 16
 		jae   .15skip
-    @1:
+@1:
   end if
 		mov   r8l, byte[.captureOrPromotion]
 		mov   edi, dword[.reduction]
 		mov   ecx, 15
-	       test   r8l, r8l
-		 jz   .15NotCaptureOrPromotion
-		lea   eax, [rdi	- 1]
+		test   r8l, r8l
+		jz   .15NotCaptureOrPromotion
+
+		mov  r9d, dword[rbx-2*sizeof.State+State.statScore] ; (ss-1)->statScore >= 0
+		shr  r9d, 31
+		add  edi, 1
+		sub  edi, r9d
+
+		lea   eax, [rdi-1]
 		cmp   byte[.moveCountPruning], 0
-		 je   .15skip
-	       test   edi, edi
-	     cmovnz   edi, eax
+		je   .15skip
+		test   edi, edi
+		cmovnz   edi, eax
 		jmp   .15ReadyToSearch
 
 .15NotCaptureOrPromotion:
@@ -1192,7 +1197,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
     ; ecx = 15
 
     ; Decrease reduction if opponent's move count is high
-		cmp   ecx, dword[rbx	- 2*sizeof.State + State.moveCount]
+		cmp   ecx, dword[rbx-2*sizeof.State+State.moveCount]
   if PvNode = 1
 		sbb   edi, dword[.pvExact]
   else
@@ -1243,7 +1248,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		and   edx, eax
 		shr   edx, 31
 		add   edi, edx
-		mov   dword[rbx	- 1*sizeof.State + State.statScore], eax
+		mov   dword[rbx-1*sizeof.State+State.statScore], eax
 
 		cdq
 		mov   ecx, 20000
@@ -1277,17 +1282,17 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		lea   r10, [QSearch_NonPv_InCheck]
 		lea   r11, [QSearch_NonPv_NoCheck]
 		cmp   byte[rbx-1*sizeof.State+State.givesCheck], 0
-	     cmovne   r11, r10
+		cmovne   r11, r10
 		lea   rax, [Search_NonPv]
 		cmp   r8d, 1
-	      cmovl   rax, r11
-	      cmovl   r8d, r9d
+		cmovl   rax, r11
+		cmovl   r8d, r9d
 		mov   edx, dword[.alpha]
 		neg   edx
 		lea   ecx, [rdx-1]
-	      movzx   r9d, byte[.cutNode]
+		movzx   r9d, byte[.cutNode]
 		not   r9d
-	       call   rax
+		call   rax
 		neg   eax
  if PvNode = 1
 		cmp   eax, dword[.alpha]
@@ -1309,21 +1314,21 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		lea   r10, [QSearch_Pv_InCheck]
 		lea   r11, [QSearch_Pv_NoCheck]
 		cmp   byte[rbx-1*sizeof.State+State.givesCheck], 0
-	     cmovne   r11, r10
+		cmovne   r11, r10
 		lea   rax, [Search_Pv]
 		cmp   r8d, 1
-	      cmovl   rax, r11
-	      cmovl   r8d, r9d
+		cmovl   rax, r11
+		cmovl   r8d, r9d
 		mov   ecx, dword[.beta]
 		neg   ecx
 		mov   edx, dword[.alpha]
 		neg   edx
-	       call   rax
+		call   rax
 		neg   eax
 		jmp   .17entry
   end if
 .15skip:
-    ; Step 16. full depth search   this is for when step 15 is skipped
+    ; Step 16. full depth search this is for when step 15 is skipped
 		xor   r9, r9
 		mov   r8d, dword[.newDepth]
   if PvNode = 1
@@ -1337,14 +1342,14 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 	     cmovne   r11, r10
 		lea   rax, [Search_NonPv]
 		cmp   r8d, 1
-	      cmovl   rax, r11
-	      cmovl   r8d, r9d
+		cmovl   rax, r11
+		cmovl   r8d, r9d
 		mov   edx, dword[.alpha]
 		neg   edx
 		lea   ecx, [rdx-1]
-	      movzx   r9d, byte[.cutNode]
+		movzx   r9d, byte[.cutNode]
 		not   r9d
-	       call   rax
+		call   rax
 		neg   eax
   if PvNode = 1
 		cmp   eax, dword[.alpha]
@@ -1362,17 +1367,17 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		lea   r10, [QSearch_Pv_InCheck]
 		lea   r11, [QSearch_Pv_NoCheck]
 		cmp   byte[rbx-1*sizeof.State+State.givesCheck], 0
-	     cmovne   r11, r10
+		cmovne   r11, r10
 		lea   rax, [Search_Pv]
 		cmp   r8d, 1
-	      cmovl   rax, r11
-	      cmovl   r8d, r9d
+		cmovl   rax, r11
+		cmovl   r8d, r9d
 		mov   ecx, dword[.beta]
 		neg   ecx
 		mov   edx, dword[.alpha]
 		neg   edx
 		xor   r9d, r9d
-	       call   rax
+		call   rax
 		neg   eax
 .SkipFullPvSearch:
   end if
@@ -1381,7 +1386,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		mov   ecx, dword[.move]
 		mov   edi, eax
 		mov   dword[.value], eax
-	       call   Move_Undo
+		call   Move_Undo
 
     ; Step 18. Check for new best move
 		xor   eax, eax
@@ -1402,12 +1407,12 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		 je   @f
 		cmp   edi, dword[.alpha]
 		jle   .FoundRootMoveDone
-	    _vmovsd   xmm0,	qword[rbp-Thread.rootPos+Thread.bestMoveChanges]
-	    _vaddsd   xmm0,	xmm0, qword[constd._1p0]
-	    _vmovsd   qword[rbp-Thread.rootPos+Thread.bestMoveChanges],	xmm0
+		_vmovsd   xmm0,	qword[rbp-Thread.rootPos+Thread.bestMoveChanges]
+		_vaddsd   xmm0,	xmm0, qword[constd._1p0]
+		_vmovsd   qword[rbp-Thread.rootPos+Thread.bestMoveChanges],	xmm0
 	@@:
 		mov   r10d,	edi
-	      movzx   eax, byte[rbp-Thread.rootPos+Thread.selDepth]
+		movzx   eax, byte[rbp-Thread.rootPos+Thread.selDepth]
 		mov   rcx, qword[rbx+1*sizeof.State+State.pv]
 		mov   dword[rdx+RootMove.selDepth],	eax
 		jmp   @2f
@@ -1417,7 +1422,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		add   esi, 1
     @2:
 		mov   eax, dword[rcx]
-	       test   eax, eax
+		test   eax, eax
 		jnz   @1b
 		mov   dword[rdx+RootMove.pvSize], esi
 .FoundRootMoveDone:
@@ -1437,7 +1442,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		xor   eax, eax
 		mov   dword[r8], ecx
 		add   r8, 4
-	       test   r9, r9
+		test   r9, r9
 		 jz   @2f
     @1:
 		mov   eax, dword[r9]
@@ -1445,7 +1450,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
     @2:
 		mov   dword[r8], eax
 		add   r8, 4
-	       test   eax, eax
+		test   eax, eax
 		jnz   @1b
   end if
   if PvNode = 1
@@ -1473,7 +1478,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		add   eax, 1
 		mov   dword[.quietCount], eax
 		jmp   .MovePickLoop
-  @1:
+    @1:
 		cmp   edx, 32
 		jae   .MovePickLoop
 		mov   dword[.capturesSearched+4*rdx], ecx
@@ -1486,46 +1491,58 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		mov   eax, dword[rbx-1*sizeof.State+State.currentMove]
 		lea   esi, [rax-1]
 		and   eax, 63
-	      movzx   ecx, byte[rbp+Pos.board+rax]
+		movzx  ecx, byte[rbp+Pos.board+rax]
 		shl   ecx, 6
-		lea   r15d,	[rax+rcx]
-		mov   r12d,	dword[.bestMove]
+		lea   r15d, [rax+rcx]
+		mov   r12d, dword[.bestMove]
 		mov   eax, dword[.depth]
-		mov   r13d,	eax
-	       imul   eax, eax
-		lea   r10d,	[rax+2*r13-2]
-		mov   r14d,	dword[.excludedMove]
+        mov   edi, dword[.bestValue]
+		mov   r13d, eax
+		imul   eax, eax
+		lea   r10d, [rax+2*r13-2]
+		mov   r14d, dword[.excludedMove]
     ; r15d = offset of [piece_on(prevSq),prevSq]
     ; r12d = move
     ; r13d = depth
     ; r10d = bonus
     ; r14d = excludedMove
-		mov   edi, dword[.bestValue]
 		cmp   dword[.moveCount], 0
-		 je   .20Mate
-	       test   r12d,	r12d
-		 jz   .20CheckBonus
+		je   .20Mate
+		test   r12d, r12d
+		jz   .20CheckBonus
 .20Quiet:
 		mov   edx, r12d
 		mov   eax, r12d
 		and   eax, 63
 		shr   edx, 14
-	      movzx   eax, byte[rbp+Pos.board+rax]
-		 or   al, byte[_CaptureOrPromotion_or+rdx]
-	       test   al, byte[_CaptureOrPromotion_and+rdx]
+		movzx   eax, byte[rbp+Pos.board+rax]
+		or   al, byte[_CaptureOrPromotion_or+rdx]
+		test   al, byte[_CaptureOrPromotion_and+rdx]
 		jnz   .20Quiet_UpdateCaptureStats
-	UpdateStats   r12d, .quietsSearched, dword[.quietCount], r11d, r10d, r15
+		UpdateStats   r12d, .quietsSearched, dword[.quietCount], r11d, r10d, r15
 		jmp   .20Quiet_UpdateStatsDone
 .20Quiet_UpdateCaptureStats:
-		UpdateCaptureStats   r12d, .capturesSearched, dword[.captureCount],	r11d, r10d
-.20Quiet_UpdateStatsDone:
+
+		mov  dword[.statBonusDepth], r10d
+		mov  eax, dword[.beta]
+		add  eax, KnightValueMg
+		cmp dword[.bestValue], eax
+		jle @f
+
 		lea   r10d, [r10+2*(r13+1)+1]
+
+	@@:
+		UpdateCaptureStats r12d, .capturesSearched, dword[.captureCount], r11d, r10d
+		mov r10d, dword[.statBonusDepth]
+
+.20Quiet_UpdateStatsDone:
+		lea   r10d, [r10+2*(r13+1)+1]; = [x^2 + 2(x) - 2] + 2(x+1) + 1 = (x+1)^2 + 2(x+1) - 2
     ; r10d = penalty
 		cmp   dword[rbx-1*sizeof.State+State.moveCount], 1
 		jne   .20TTStore
 		cmp   byte[rbx+State.capturedPiece], 0
 		jne   .20TTStore
-		imul   r11d,	r10d, -32
+		imul   r11d, r10d, -32
 		cmp   r10d,	324
 		jae   .20TTStore
 		UpdateCmStats   (rbx-1*sizeof.State), r15, r11d, r10d, r8
@@ -1552,7 +1569,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 	@@:
 		cmp   byte[rbx+State.capturedPiece], 0
 		jne   .20TTStore
-		imul   r11d,	r10d, 32
+		imul   r11d, r10d, 32
 		cmp   r10d,	324
 		jae   .20TTStore
       UpdateCmStats   (rbx-1*sizeof.State),	r15, r11d, r10d, r8
@@ -1572,7 +1589,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		mov   eax, dword[.bestMove]
 		xor   esi, esi
 		cmp   edi, dword[.beta]
-	      setge   sil
+		setge   sil
 		add   esi, BOUND_UPPER
   else
 		mov   eax, dword[.bestMove]
@@ -1592,7 +1609,7 @@ Display	2, "Search returning %i0%n"
 		pop   r15 r14 r13 r12 rdi rsi rbx
 		ret
 .ValueFromTT:
-	      movzx   r8d, byte[rbx+State.ply]
+		movzx   r8d, byte[rbx+State.ply]
 		mov   r9d, edi
 		sar   r9d, 31
 		xor   r8d, r9d
@@ -1644,23 +1661,23 @@ Display	2, "Search returning %i0%n"
 		and   dl, byte[_CaptureOrPromotion_and+rax]
     ; dl = capture or promotion
 		mov   eax, edi
-	       test   ecx, ecx
+		test   ecx, ecx
 		 jz   .Return
     ; ttMove is	quiet; update move sorting heuristics on TT hit
 		cmp   edi, dword[.beta]
 		 jl   .ReturnTTValue_Penalty
 		mov   eax, dword[rbx-1*sizeof.State+State.currentMove]
 		and   eax, 63
-	      movzx   ecx, byte[rbp+Pos.board+rax]
+		movzx   ecx, byte[rbp+Pos.board+rax]
 		shl   ecx, 6
-		lea   r15d,	[rax+rcx]
-    ; r15d = offset of [piece_on(prevSq),prevSq]
-	       test   dl, dl
+		lea   r15d, [rax+rcx]
+		; r15d = offset of [piece_on(prevSq),prevSq]
+		test   dl, dl
 		jnz   .ReturnTTValue_UpdateCaptureStats
-	UpdateStats   r12d,	0, 0, r11d, r10d, r15
+		UpdateStats   r12d, 0, 0, r11d, r10d, r15
 ;		jmp   .ReturnTTValue_UpdateStatsDone
 .ReturnTTValue_UpdateCaptureStats:
-;UpdateCaptureStats   r12d, 0, 0, r11d,	r10d
+;UpdateCaptureStats   r12d, 0, 0, r11d, r10d
 .ReturnTTValue_UpdateStatsDone:
 		mov   eax, edi
 		lea   r10d,	[r10+2*(r13+1)+1]
@@ -1672,7 +1689,7 @@ Display	2, "Search returning %i0%n"
 	       imul   r11d,	r10d, -32
 		cmp   r10d,	324
 		jae   .Return
-  UpdateCmStats	  (rbx-1*sizeof.State),	r15, r11d, r10d, r8
+  UpdateCmStats	  (rbx-1*sizeof.State), r15, r11d, r10d, r8
 		mov   eax, edi
 		jmp   .Return
 .ReturnTTValue_Penalty:
@@ -1703,7 +1720,7 @@ Display	2, "Search returning %i0%n"
   end if
 	 calign   8
 .20ValueToTT:
-	      movzx   edx, byte[rbx+State.ply]
+		movzx   edx, byte[rbx+State.ply]
 		mov   eax, edi
 		sar   eax, 31
 		xor   edx, eax
