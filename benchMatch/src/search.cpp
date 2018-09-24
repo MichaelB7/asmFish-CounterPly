@@ -823,8 +823,7 @@ namespace {
     if (    depth >= 8 * ONE_PLY
         && !ttMove)
     {
-        Depth d = 3 * depth / 4 - 2 * ONE_PLY;
-        search<NT>(pos, ss, alpha, beta, d, cutNode);
+        search<NT>(pos, ss, alpha, beta, depth - 7 * ONE_PLY, cutNode);
 
         tte = TT.probe(posKey, ttHit);
         ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
@@ -984,7 +983,16 @@ moves_loop: // When in check, search starts from here
           Depth r = reduction<PvNode>(improving, depth, moveCount);
 
           if (captureOrPromotion) // (~5 Elo)
+          {
+            // Increase reduction by comparing opponent's stat score
+              if ((ss-1)->statScore >= 0)
+                  r += ONE_PLY;
+            //  Bench  : 4813832
+            //  Bench  : 5341753
+
+
               r -= r ? ONE_PLY : DEPTH_ZERO;
+          }
           else
           {
               // Decrease reduction if opponent's move count is high (~5 Elo)
@@ -1149,7 +1157,8 @@ moves_loop: // When in check, search starts from here
         if (!pos.capture_or_promotion(bestMove))
             update_quiet_stats(pos, ss, bestMove, quietsSearched, quietCount, stat_bonus(depth));
         else
-            update_capture_stats(pos, bestMove, capturesSearched, captureCount, stat_bonus(depth));
+            update_capture_stats(pos, bestMove, capturesSearched, captureCount,
+                                 stat_bonus(depth + (bestValue > beta + KnightValueMg ? ONE_PLY : DEPTH_ZERO)));
 
         // Extra penalty for a quiet TT move in previous ply when it gets refuted
         if ((ss-1)->moveCount == 1 && !pos.captured_piece())
