@@ -1038,8 +1038,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 	; Futility pruning:	parent node
 		xor   edx, edx
 		cmp   edi, 7*ONE_PLY
-		jg    .13done
-		je    @f
+		jge   @f
 		test  edi, edi
 		cmovs edi, edx
 		imul  eax, edi, 200
@@ -1051,8 +1050,8 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		jle   .MovePickLoop
 @@:
 	; Prune moves with negative	SEE at low depths
-		mov   ecx, dword[.move]
-		imul   edx, edi, -35
+		mov    ecx, dword[.move]
+		imul   edx, edi, -29
 		imul   edx, edi
 		call   SeeTestGe
 		test   eax, eax
@@ -1062,6 +1061,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		mov   ecx, dword[.move]
 		cmp   byte[.extension], 0
 		jne   .13done
+
 		imul   edx, -PawnValueEg
 		call   SeeTestGe
 		test   eax, eax
