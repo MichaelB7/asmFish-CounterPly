@@ -146,20 +146,20 @@ namespace {
 
   // PassedRank[Rank] contains a bonus according to the rank of a passed pawn
   constexpr Score PassedRank[RANK_NB] = {
-		S(0, 0), S(4, 17), S(7, 20), S(14, 36), S(42, 62), S(165, 171), S(279, 252)
+    S(0, 0), S(4, 17), S(7, 20), S(14, 36), S(42, 62), S(165, 171), S(279, 252)
   };
 
   // PassedFile[File] contains a bonus according to the file of a passed pawn
   constexpr Score PassedFile[FILE_NB] = {
-		S( 11, 14), S( 0, -5), S(-2, -8), S(-25,-13),
+    S( 11, 14), S( 0, -5), S(-2, -8), S(-25,-13),
     S(-25,-13), S(-2, -8), S( 0, -5), S( 11, 14)
   };
 
   // PassedDanger[Rank] contains a term to weight the passed score
   constexpr int PassedDanger[RANK_NB] = { 0, 0, 0, 2, 7, 12, 19 };
 
-  // KingProtector[PieceType-2] contains a penalty according to distance from king
-  constexpr Score KingProtector[] = { S(4, 6), S(6, 3), S(1, 0), S(0, -2) };
+  // KingProtector[knight/bishop] contains a penalty according to distance from king
+  constexpr Score KingProtector[] = { S(4, 6), S(6, 3) };
 
   // Assorted bonuses and penalties
   constexpr Score BishopPawns        = S(  3,  5);
@@ -180,7 +180,7 @@ namespace {
   constexpr Score ThreatBySafePawn   = S(165,133);
   constexpr Score TrappedRook        = S( 92,  0);
   constexpr Score WeakQueen          = S( 50, 10);
-  constexpr Score WeakUnopposedPawn  = S( 5,  26);
+  constexpr Score WeakUnopposedPawn  = S(  5, 26);
 
 #undef S
 
@@ -330,9 +330,6 @@ namespace {
 
         mobility[Us] += MobilityBonus[Pt - 2][mob];
 
-        // Penalty if the piece is far from the king
-        score -= KingProtector[Pt - 2] * distance(s, pos.square<KING>(Us));
-
         if (Pt == BISHOP || Pt == KNIGHT)
         {
             // Bonus if piece is on an outpost square or can reach one
@@ -347,6 +344,9 @@ namespace {
             if (    relative_rank(Us, s) < RANK_5
                 && (pos.pieces(PAWN) & (s + pawn_push(Us))))
                 score += MinorBehindPawn;
+
+            // Penalty if the piece is far from the king
+            score -= KingProtector[Pt == BISHOP] * distance(s, pos.square<KING>(Us));
 
             if (Pt == BISHOP)
             {
@@ -428,7 +428,7 @@ namespace {
     // Main king safety evaluation
     if (kingAttackersCount[Them] > 1 - pos.count<QUEEN>(Them))
     {
-        int kingDanger = -mg_value(score);
+        int kingDanger = 0;
         unsafeChecks = 0;
 
         // Attacked squares defended at most once by our queen or king
@@ -473,12 +473,13 @@ namespace {
         // the square is in the attacker's mobility area.
         unsafeChecks &= mobilityArea[Them];
 
-				kingDanger +=        kingAttackersCount[Them] * kingAttackersWeight[Them]
-			                      + 64  * kingAttacksCount[Them]
-			                      + 182 * popcount(kingRing[Us] & weak)
-			                      + 128 * popcount(pos.blockers_for_king(Us) | unsafeChecks)
-			                      - 857 * !pos.count<QUEEN>(Them)
-			                      +  31 ;
+        kingDanger +=        kingAttackersCount[Them] * kingAttackersWeight[Them]
+                     + 64  * kingAttacksCount[Them]
+                     + 183 * popcount(kingRing[Us] & weak)
+                     + 122 * popcount(pos.blockers_for_king(Us) | unsafeChecks)
+                     - 860 * !pos.count<QUEEN>(Them)
+                     -   7 * mg_value(score) / 8
+                     +  17 ;
 
         // Transform the kingDanger units into a Score, and subtract it from the evaluation
         if (kingDanger > 0)
@@ -646,7 +647,7 @@ namespace {
 
         assert(!(pos.pieces(Them, PAWN) & forward_file_bb(Us, s + Up)));
 
-        bb = forward_file_bb(Us, s) & (pos.pieces(Them));
+        bb = forward_file_bb(Us, s) & pos.pieces(Them);
         score -= HinderPassedPawn * popcount(bb);
 
         int r = relative_rank(Us, s);
@@ -770,9 +771,9 @@ namespace {
                             && (pos.pieces(PAWN) & KingSide);
 
     // Compute the initiative bonus for the attacking side
-    int complexity =  12 * outflanking
-                    +  8 * pe->pawn_asymmetry()
+    int complexity =   8 * pe->pawn_asymmetry()
                     + 12 * pos.count<PAWN>()
+                    + 12 * outflanking
                     + 16 * pawnsOnBothFlanks
                     + 48 * !pos.non_pawn_material()
                     -136 ;
@@ -797,20 +798,19 @@ namespace {
     Color strongSide = eg > VALUE_DRAW ? WHITE : BLACK;
     int sf = me->scale_factor(pos, strongSide);
 
-		// If scale is not already specific, scale down the endgame via general heuristics
-		    if (sf == SCALE_FACTOR_NORMAL)
-		    {
-		        if (   pos.opposite_bishops()
-		            && pos.non_pawn_material(WHITE) == BishopValueMg
-		            && pos.non_pawn_material(BLACK) == BishopValueMg)
-		            // Endgame with opposite-colored bishops and no other pieces is almost a draw
-		            sf = 31;
-		        else
-		            sf = std::min(40 + (pos.opposite_bishops()? 2 : 7) * pos.count<PAWN>(strongSide), sf);
-		    }
+    // If scale is not already specific, scale down the endgame via general heuristics
+    if (sf == SCALE_FACTOR_NORMAL)
+    {
+        if (   pos.opposite_bishops()
+            && pos.non_pawn_material(WHITE) == BishopValueMg
+            && pos.non_pawn_material(BLACK) == BishopValueMg)
+            sf = 31;
+        else
+            sf = std::min(40 + (pos.opposite_bishops() ? 2 : 7) * pos.count<PAWN>(strongSide), sf);
+    }
 
-		    return ScaleFactor(sf);
-		  }
+    return ScaleFactor(sf);
+  }
 
 
   // Evaluation::value() is the main function of the class. It computes the various

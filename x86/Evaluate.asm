@@ -261,11 +261,6 @@ NoKingRing:
 		addsub   esi, eax
 		; r10 = mob
 
-		lea   eax, [8*r8]
-		movzx   eax, byte[SquareDistance+8*rax+r14]
-		imul   eax, KingProtector_Pt
-		addsub   esi, eax
-
 
   if Pt	= Knight | Pt =	Bishop
 
@@ -306,6 +301,12 @@ OutpostElse:
 		test   rdx, qword[.ei.attackedBy+8*(8*Us+Pawn)]
 		cmovnz   esi, ecx
 OutpostDone:
+
+; score -= KingProtector[Pt == BISHOP] * distance(s, pos.square<KING>(Us));
+		lea   eax, [8*r8]
+		movzx   eax, byte[SquareDistance+8*rax+r14]
+		imul   eax, KingProtector_Pt
+		addsub   esi, eax
 
 	; Penalty for pawns on the same color square as the bishop
     if Pt = Bishop
@@ -535,18 +536,18 @@ KingSafetyDoneRet:
 		add   edi, eax
 
 		_popcnt rax, r9, rcx
-		imul    eax, 182
+		imul    eax, 183
 		add     edi, eax
 		test    PiecesThem, qword[rbp+Pos.typeBB+8*Queen]
-		lea     eax, [rdi-857]
+		lea     eax, [rdi-860]
 		cmovz   edi, eax
 
 	; the following	does edi += - 9*mg_value(score)/8 + 40
 		lea   ecx, [rsi+0x08000]
-		add   edi, 31
+		add   edi, 17
 		sar   ecx, 16
-		shl   ecx, 3
-		lea   edx, [rcx]
+		imul  ecx, 7
+		mov   edx, ecx
 		lea   eax, [rcx+7]
 		cmovs edx, eax
 		sar   edx, 3
@@ -621,7 +622,7 @@ KingSafetyDoneRet:
 		or    rdx, r9
 
 		_popcnt rax, rdx, rcx
-		imul  eax, 128
+		imul  eax, 122
 		add   edi, eax
 
 	; Compute the king danger score and subtract it from the evaluation
