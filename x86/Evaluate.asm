@@ -17,6 +17,7 @@ ThreatByPawnPush    = ( 49 shl 16) + ( 30)
 SliderOnQueen       = ( 42 shl 16) + ( 21)
 HinderPassedPawn    = (  5 shl 16) + ( -1)
 TrappedBishopA1H1   = ( 50 shl 16) + ( 50)
+ThreatByKing        = (31 shl 16)  + ( 75)
 
 LazyThreshold = 1500
 
@@ -911,13 +912,10 @@ macro EvalThreats Us
   local addsub, Them, Up, Left, Right
   local AttackedByUs, AttackedByThem, PiecesPawn, PiecesUs, PiecesThem
   local TRank2BB, TRank7BB
-  local ThreatByKing0, ThreatByKing1
   local SafeThreatsDone, SafeThreatsLoop, WeakDone
   local ThreatMinorLoop, ThreatMinorDone, ThreatRookLoop, ThreatRookDone
   local ThreatMinorSkipPawn, ThreatRookSkipPawn
 
-        ThreatByKing0 = (( 30 shl 16) + ( 62))
-        ThreatByKing1 = ((  -9 shl 16) + (160))
 
   if Us	= White
 	;addsub		equ add
@@ -1058,10 +1056,11 @@ ThreatRookDone:
 		neg   rdx
 		sbb   edx, edx
 		_blsr   rcx, rcx, rax
-		neg   rcx
-		sbb   eax, eax
-		and   eax, ThreatByKing1-ThreatByKing0
-		add   eax, ThreatByKing0
+
+		xor  r8, r8
+		cassign  rax, rcx, r8
+
+		add   eax, ThreatByKing
 		and   eax, edx
 		addsub   esi, eax
 
