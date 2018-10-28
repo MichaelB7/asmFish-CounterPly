@@ -250,13 +250,13 @@ echo.
  
  
 
-cd LinuxOS_binaries
-if exist arm* del arm*
-cd ..
-set include=arm\include\
-ECHO === Building ARM Executables ===
-start /min fasmg.exe "arm\fish.arm" "armFishL%CP%_%datestamp%_v8" -e 1000 -i "VERSION_OS='L'" -i "PEDANTIC = 1" -i "VERSION_POST = 'v8'" %debug%
-echo.
+REM cd LinuxOS_binaries
+REM if exist arm* del arm*
+REM cd ..
+REM set include=arm\include\
+REM ECHO === Building ARM Executables ===
+REM start /min fasmg.exe "arm\fish.arm" "armFishL%CP%_%datestamp%_v8" -e 1000 -i "VERSION_OS='L'" -i "PEDANTIC = 1" -i "VERSION_POST = 'v8'" %debug%
+REM echo.
 
  
  
@@ -285,8 +285,8 @@ start /min fasmg.exe "x86\fish.asm" "mateFishL%CP%_%datestamp%_popcnt" -e 1000 -
 start /min fasmg.exe "x86\fish.asm" "mateFishL%CP%_%datestamp%_bmi1" -e 1000 -i "VERSION_OS='L'" -i "VERSION_POST = 'bmi1'" -i "USE_MATEFINDER = 1" %debug%
 start /min fasmg.exe "x86\fish.asm" "mateFishL%CP%_%datestamp%_bmi2" -e 1000 -i "VERSION_OS='L'" -i "VERSION_POST = 'bmi2'" -i "USE_MATEFINDER = 1" %debug%
 
-set include=arm\include\
-start /min fasmg.exe "arm\fish.arm" "mateFishL%CP%_%datestamp%_v8" -e 1000 -i "VERSION_OS='L'" -i "VERSION_POST = 'v8'" -i "USE_MATEFINDER = 1" %debug%
+::set include=arm\include\
+::start /min fasmg.exe "arm\fish.arm" "mateFishL%CP%_%datestamp%_v8" -e 1000 -i "VERSION_OS='L'" -i "VERSION_POST = 'v8'" -i "USE_MATEFINDER = 1" %debug%
 echo.
 
 :: Mac
@@ -344,6 +344,8 @@ start /min /wait fasmg.exe "x86\fish.asm" "mateFishW%CP%_%datestamp%_base.exe" -
 timeout 8
 
 :: Move all files to their respective directories
+del *v8
+del *.7z
 move asmFishW* WindowsOS_binaries
 move asmFishL* LinuxOS_binaries
 move armFishL* LinuxOS_binaries
