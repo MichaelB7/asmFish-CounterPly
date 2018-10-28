@@ -1020,6 +1020,7 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		jnz   .MovePickLoop
 		sub   edi, dword[.reduction]
 	; edi = lmrDepth
+
 	; Countermoves based pruning
 		mov   r8, qword[.CMH]
 		mov   r9, qword[.FMH]
@@ -1027,16 +1028,21 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		lea   r11, [8*r11+r13]
 		mov   eax, dword[r8+4*r11]
 		mov   ecx, dword[r9+4*r11]
-		cmp   edi, 3*ONE_PLY
-		jge   @f
-	if CounterMovePruneThreshold <> 0     ; code assumes
-	err
-	end if
+		xor   edx, edx
+		mov   r10d, 2
+		mov   r9d, 3
+		cmp   edx, dword[rbx-1*sizeof.State+State.statScore]
+		cmovl r10d, r9d
+		cmp   edi, r10d
+		jg    @f
+		if CounterMovePruneThreshold <> 0
+		err
+		end if
 		and   eax, ecx
 		 js   .MovePickLoop
+
 	@@:
 	; Futility pruning:	parent node
-		xor   edx, edx
 		cmp   edi, 7*ONE_PLY
 		jge   @f
 		test  edi, edi
