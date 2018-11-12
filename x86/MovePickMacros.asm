@@ -272,7 +272,7 @@ WhileLoop:
             add  ecx, eax
             mov  eax, dword[r8 + 4*rcx]
             mov  r9d, edx ; prepares for signed division by 16
-            mov  ecx, 16
+            mov  ecx, 8
             cdq
             idiv  ecx ; hammers edx
             mov  edx, r9d ; reloads edx
