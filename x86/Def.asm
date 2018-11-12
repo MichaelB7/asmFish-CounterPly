@@ -5,7 +5,7 @@ else
 end if
 
 ; MAX_RESETCNT should NOT be more than the number of times search is called per second/core,
-; which is about half of nps/core (the other half comes from qsearch). Higher setting are 
+; which is about half of nps/core (the other half comes from qsearch). Higher setting are
 ; dangerous but lower settings lead to increased polling of the time
 ; MIN_RESETCNT should be fairly low, not more than 50, say.
 ; official sf polls the timer every 4096 calls, which is much too often
@@ -93,15 +93,15 @@ ALL_PIECES     = 0
 QUEEN_DIAGONAL = 1
 
 ; piece values
-PawnValueMg   = 171
+PawnValueMg   = 175
 KnightValueMg = 764
-BishopValueMg = 826
+BishopValueMg = 815
 RookValueMg   = 1282
 QueenValueMg  = 2500
 
 PawnValueEg   = 240
 KnightValueEg = 848
-BishopValueEg = 891
+BishopValueEg = 905
 RookValueEg   = 1373
 QueenValueEg  = 2670
 
