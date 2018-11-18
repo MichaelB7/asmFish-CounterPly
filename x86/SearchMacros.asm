@@ -1,6 +1,4 @@
-; RazorMargin[] =
-RazorMargin1 = 590
-RazorMargin2 = 604
+RazorMargin = 600
 
 macro search RootNode, PvNode
 	; in:
@@ -288,39 +286,34 @@ Display	2, "Search(alpha=%i1, beta=%i2, depth=%i8) called%n"
 		mov   dword[.evalu], eax
 .StaticValueDone:
 
-		; Step 6. Razoring (skipped	when in	check)
-  if PvNode = 0
+		; Step 6. Razoring (skipped when in check)
 		mov   edx, dword[.depth]
-		cmp   edx, 2*ONE_PLY
+		cmp   edx, 1*ONE_PLY
 		jg    .6skip
-	if USE_MATEFINDER =	1
-		lea   eax, [rcx+2*VALUE_KNOWN_WIN-1]
-		cmp   eax, 4*VALUE_KNOWN_WIN-1
-		jae   .6skip
-	end	if
+
+		if USE_MATEFINDER = 1
+			lea   eax, [rcx+2*VALUE_KNOWN_WIN-1]
+			cmp   eax, 4*VALUE_KNOWN_WIN-1
+			jae   .6skip
+		end if
+
 		mov  ecx, dword[.alpha]
-		cmp  edx, ONE_PLY
-		jne  @1f
-		lea  eax, [ecx - RazorMargin1]
+		lea  eax, [ecx - RazorMargin]
 		cmp  eax, dword[.evalu]
-		jl   @1f
-		lea  edx, [rcx + 1]
+		jl   .6skip
+
+		mov  edx, dword[.beta]
 		xor  r8d, r8d
-		   call  QSearch_NonPv_NoCheck
+
+		if PvNode = 0
+			call  QSearch_NonPv_NoCheck
+		else
+			call  QSearch_Pv_NoCheck
+		end if
+
 		jmp  .Return
-@1:
-		lea  eax, [ecx - RazorMargin2]
-		cmp  eax, dword[.evalu]
-		 jl  .6skip
-		xor   r8d, r8d
-		sub   ecx, RazorMargin2
-		lea   edx, [rcx+1]
-		mov   esi, ecx
-		call   QSearch_NonPv_NoCheck
-		cmp   eax, esi
-		jle   .Return
+
 .6skip:
-  end if
 		mov   edx, dword[rbx-0*sizeof.State+State.staticEval]
 		mov   ecx, dword[rbx-2*sizeof.State+State.staticEval]
 		cmp   edx, ecx
