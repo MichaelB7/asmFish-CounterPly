@@ -344,11 +344,10 @@ start /min /wait fasmg.exe "x86\fish.asm" "mateFishW%CP%_%datestamp%_base.exe" -
 timeout 8
 
 :: Move all files to their respective directories
-del *v8
 del *.7z
 move asmFishW* WindowsOS_binaries
 move asmFishL* LinuxOS_binaries
-move armFishL* LinuxOS_binaries
+::move armFishL* LinuxOS_binaries
 move asmFishX* MacOS_binaries
 move mateFish* Matefinder_binaries
 

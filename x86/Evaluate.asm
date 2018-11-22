@@ -320,35 +320,35 @@ OutpostDone:
 		subadd   esi, eax
 
     ; Bonus for	bishop on a long diagonal which	can "see" both center squares
-		mov   rdx, qword[rbp	+ Pos.typeBB + 8*Pawn]
-      BishopAttacks   rax, r14,	rdx,	rcx
+		mov   rdx, qword[rbp + Pos.typeBB + 8*Pawn]
+      BishopAttacks   rax, r14, rdx, rcx
 		bts   rax, r14
-		lea   edx, [rsi	+ (Them	- Us)*LongRangedBishop]
+		lea   edx, [rsi + (Them - Us)*LongRangedBishop]
 		mov   r8, (FileDBB or FileEBB) and (Rank4BB or Rank5BB)
 		and   rax, r8
-		lea   rcx, [rax	- 1]
+		lea   rcx, [rax - 1]
 		test   rcx, rax
 		cmovnz   esi, edx
     end if
 
-    if PEDANTIC	= 1 & Pt = Bishop
-		lea   rdx, [rbp	+ Pos.board + r14]
+    if PEDANTIC = 1 & Pt = Bishop
+		lea   rdx, [rbp + Pos.board + r14]
 		cmp   byte[rbp + Pos.chess960],	0
 		je   @2f
-		mov   rcx, DELTA_E +	8*(1-2*Us)
+		mov   rcx, DELTA_E + 8*(1-2*Us)
 		cmp   r14d, SQ_A1 xor (56*Us)
 		je   @1f
-		mov   rcx, DELTA_W +	8*(1-2*Us)
+		mov   rcx, DELTA_W + 8*(1-2*Us)
 		cmp   r14d, SQ_H1 xor (56*Us)
 		jne   @2f
     @1:
 		cmp   byte[rdx + rcx], 8*Us + Pawn
 		jne   @2f
 		mov   eax, 4*TrappedBishopA1H1
-		cmp   byte[rdx + rcx	+ 8*(1-2*Us)], 0
+		cmp   byte[rdx + rcx + 8*(1-2*Us)], 0
 		jne   @1f
 		mov   eax, 2*TrappedBishopA1H1
-		cmp   byte[rdx + rcx	+ rcx],	8*Us + Pawn
+		cmp   byte[rdx + rcx + rcx], 8*Us + Pawn
 		je   @1f
 		mov   eax, TrappedBishopA1H1
     @1:
@@ -791,12 +791,12 @@ macro ShelterStorm Us
 		mov   r9, PiecesUs
 		and   r9, r8
 	; r9 = ourPawns
-        and   ecx, 7
-    ; ecx = file of ksq
+		and   ecx, 7
+	; ecx = file of ksq
 		mov   r10, PiecesThem
 		and   r10, r8
 	; r10 = theirPawns
-        mov  rax, qword[FileBB+8*rcx]
+		mov  rax, qword[FileBB+8*rcx]
 		and  rax, r9
 		cmp  rax, 1
 		sbb  eax, eax
