@@ -4,7 +4,7 @@ Hanging             = ( 57 shl 16) + ( 32)
 HinderPassedPawn    = (  8 shl 16) + (  0)
 KingProtector_Pt    = ( -6 shl 16) + ( -6)
 KnightOnQueen       = ( 21 shl 16) + ( 11)
-LongRangedBishop    = ( 22 shl 16) + (  0)
+LongDiagonalBishop  = ( 46 shl 16) + (  0)
 MinorBehindPawn     = ( 16 shl 16) + (  0)
 Overload            = ( 13 shl 16) + (  6)
 PawnlessFlank       = ( 19 shl 16) + ( 84)
@@ -322,8 +322,8 @@ OutpostDone:
     ; Bonus for	bishop on a long diagonal which	can "see" both center squares
 		mov   rdx, qword[rbp + Pos.typeBB + 8*Pawn]
       BishopAttacks   rax, r14, rdx, rcx
-		bts   rax, r14
-		lea   edx, [rsi + (Them - Us)*LongRangedBishop]
+		; bts   rax, r14
+		lea   edx, [rsi + (Them - Us)*LongDiagonalBishop]
 		mov   r8, (FileDBB or FileEBB) and (Rank4BB or Rank5BB)
 		and   rax, r8
 		lea   rcx, [rax - 1]
