@@ -61,11 +61,11 @@ void Thread::clear() {
   mainHistory.fill(0);
   captureHistory.fill(0);
 
-  for (auto& to : contHistory)
+  for (auto& to : continuationHistory)
       for (auto& h : to)
-          h.get()->fill(0);
+          h->fill(0);
 
-  contHistory[NO_PIECE][0].get()->fill(Search::CounterMovePruneThreshold - 1);
+  continuationHistory[NO_PIECE][0]->fill(Search::CounterMovePruneThreshold - 1);
 }
 
 /// Thread::start_searching() wakes up the thread that will start the search
@@ -118,7 +118,7 @@ void Thread::idle_loop() {
 }
 
 /// ThreadPool::set() creates/destroys threads to match the requested number.
-/// Created and launched threads wil go immediately to sleep in idle_loop.
+/// Created and launched threads will go immediately to sleep in idle_loop.
 /// Upon resizing, threads are recreated to allow for binding if necessary.
 
 void ThreadPool::set(size_t requested) {
@@ -191,7 +191,7 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
 
   for (Thread* th : *this)
   {
-      th->nodes = th->tbHits = th->nmp_min_ply = 0;
+      th->nodes = th->tbHits = th->nmpMinPly = 0;
       th->rootDepth = th->completedDepth = DEPTH_ZERO;
       th->rootMoves = rootMoves;
       th->rootPos.set(pos.fen(), pos.is_chess960(), &setupStates->back(), th);

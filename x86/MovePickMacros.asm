@@ -1,23 +1,69 @@
+macro stat_bonus statbonus, s, x
+; x = depths = depth^2
+		mov   r9d, r13d
+		imul  r9d, r13d ; r9d = x^2
+		imul  r9d, 29
+		imul  eax, r13d, 138 ; rax = 138*x
+		add   r9d, eax
+		sub   r9d, 134
+		mov   statbonus, r9d
+end macro
 
-macro apply_bonus address, bonus32, absbonus, denominator
+macro abs_bonus bonus, t
+		mov edx, bonus
+		sar edx, 31
+		mov t, edx
+		xor t, bonus
+		sub t, edx
+end macro
+
+macro history_update address, bonus, absbonus
 		mov   eax, dword[address]
-	       imul   eax, absbonus
-		cdq
-		mov   ecx, denominator
-	       idiv   ecx
-		mov   ecx, bonus32
-
-;SD_String 'v'
-;SD_Int rcx
-
-		sub   ecx, eax
+		imul   eax, absbonus
+		mov   ecx, eax
+		mov  edx, 0x62123261
+		imul edx
+		sar  edx, 12
+		mov  eax, ecx
+		sar  eax, 31
+		sub  edx, eax
+		mov   ecx, bonus
+		sub   ecx, edx
 		add   ecx, dword[address]
 		mov   dword[address], ecx
+end macro
 
-;SD_String 'u'
-;SD_Int rcx
-;SD_String "|"
+macro apply_capture_bonus address, bonus, absbonus
+		mov   eax, dword[address]
+		imul  eax, absbonus
+		mov   ecx, eax
+		mov  edx, 0x62123261
+		imul edx
+		sar  edx, 12
+		mov  eax, ecx
+		sar  eax, 31
+		sub  edx, eax
+		mov   ecx, bonus
+		sub   ecx, edx
+		add   ecx, dword[address]
+		mov   dword[address], ecx
+end macro
 
+macro cms_update address, bonus, absbonus
+		mov   eax, dword[address]
+		imul  eax, absbonus
+		mov   ecx, eax
+		mov  edx, 0x8C08C08D
+		imul edx
+		add  edx, ecx
+		sar  edx, 14
+		mov  eax, ecx
+		sar  eax, 31
+		sub  edx, eax
+		mov   ecx, bonus
+		sub   ecx, edx
+		add   ecx, dword[address]
+		mov   dword[address], ecx
 end macro
 
 macro GetNextMove
@@ -271,7 +317,7 @@ WhileLoop:
             shl  ecx, 3
             add  ecx, eax
             mov  eax, dword[r8 + 4*rcx]
-            mov  r9d, edx ; prepares for signed division by 16
+            mov  r9d, edx ; prepares for signed division by 8
             mov  ecx, 8
             cdq
             idiv  ecx ; hammers edx
@@ -328,34 +374,42 @@ end macro
 
 
 macro ScoreEvasions start, ender
+  local cmh
   local history_get_c
   local WhileLoop, Normal, Special, Done, Capture
 
+		mov   r9, qword[rbx-1*sizeof.State+State.counterMoves]
 		mov   edi, dword[rbp+Pos.sideToMove]
 		shl   edi, 12+2
 		add   rdi, qword[rbp+Pos.history]
 
-	history_get_c equ rdi
+		history_get_c equ rdi
+		cmh equ r9
 
 		cmp   start, ender
 		jae   Done
 WhileLoop:
 		mov   ecx, dword[start+ExtMove.move]
 		mov   r10d, ecx 	; r10d = move
+		mov   eax, ecx
 		mov   r8d, ecx
-		shr   r8d, 6
-		and   r8d, 63
+		shr   eax, 6
+		and   eax, 63
 		and   ecx, 63
 		lea   start, [start+sizeof.ExtMove]
-	      movzx   ecx, byte[rbp+Pos.board+rcx]	; ecx = to piece
-	      movzx   edx, byte[rbp+Pos.board+r8]	; edx = from piece
+		movzx   ecx, byte[rbp+Pos.board+rcx]
+		movzx   edx, byte[rbp+Pos.board+rax]
 		cmp   r10d, MOVE_TYPE_EPCAP shl 12
 		jae   Special
-	       test   ecx, ecx
+		test   ecx, ecx
 		jnz   Capture
 Normal:
 		and   r10d, 64*64-1
 		mov   eax, dword[history_get_c+4*r10]
+		shl   edx, 6
+		and   r8d, 63 ; to_sq = move & 63
+		add   edx, r8d
+		add   eax, dword[cmh+4*rdx]
 		mov   dword[start-1*sizeof.ExtMove+ExtMove.value], eax
 		cmp   start, ender
 		 jb   WhileLoop

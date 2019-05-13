@@ -89,7 +89,7 @@ void Bitboards::init() {
       PopCnt16[i] = (uint8_t) popcount16(i);
 
   for (Square s = SQ_A1; s <= SQ_H8; ++s)
-      SquareBB[s] = make_bitboard(s);
+      SquareBB[s] = (1ULL << s);
 
   for (File f = FILE_A; f <= FILE_H; ++f)
       FileBB[f] = f > FILE_A ? FileBB[f - 1] << 1 : FileABB;
@@ -116,7 +116,7 @@ void Bitboards::init() {
           if (s1 != s2)
           {
               SquareDistance[s1][s2] = std::max(distance<File>(s1, s2), distance<Rank>(s1, s2));
-              DistanceRingBB[s1][SquareDistance[s1][s2] - 1] |= s2;
+              DistanceRingBB[s1][SquareDistance[s1][s2]] |= s2;
           }
 
   int steps[][5] = { {}, { 7, 9 }, { 6, 10, 15, 17 }, {}, {}, {}, { 1, 7, 8, 9 } };
@@ -137,7 +137,7 @@ void Bitboards::init() {
                   }
               }
 
-  Direction RookDirections[] = { NORTH,  EAST,  SOUTH,  WEST };
+  Direction RookDirections[] = { NORTH, EAST, SOUTH, WEST };
   Direction BishopDirections[] = { NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST };
 
   init_magics(RookTable, RookMagics, RookDirections);

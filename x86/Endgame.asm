@@ -721,7 +721,7 @@ qs equ r15d
 		 je   @f
 		cmp   bksq, SQ_G7
 		jne   .l5
-	@@:
+	@@:	
                 mov   eax, brsq
 		and   eax, 7
 		cmp   eax, FILE_A

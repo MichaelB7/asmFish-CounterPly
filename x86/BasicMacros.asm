@@ -387,24 +387,55 @@ macro _pext y, x, m, b, t, tm
     end  if
 end  macro
 
+; The following macros assist with initilization and execution of the cuckoo tables in
+; Position_Init.asm and Position.asm:
+
+macro cuckoo_H1 rg1,rg2
+    mov rg1, rg2
+	and rg1, 0x1fff
+end macro
+
+macro cuckoo_H2 rg1,rg2
+    mov rg1, rg2
+	shr rg1, 16
+	and rg1, 0x1fff
+end macro
+
+macro cuckoo_makeMove reg, fromSq, toSq
+	mov reg, fromSq
+	shl reg, 6 ; make room in register to pack in the toSquare
+	or reg, toSq
+end macro
+
+macro cuckoo_moveFromSq reg, move
+    mov reg, move
+    shr reg, 6
+    and reg, 0x03f
+end macro
+
+macro cuckoo_moveToSq reg, move
+    mov reg, move
+    and reg, 0x03f
+end macro
+
 ; Absolute function (a >= 0? a : -a)
  macro abs a
  if a eq rax
-	cdq
-	add a#d, edx
-	xor a#d, edx
+		cdq
+		add a#d, edx
+		xor a#d, edx
  else
-	mov eax, a#d
-	cdq
-	xor eax, edx
-	sub eax, edx
-	mov a#d, eax
+		mov eax, a#d
+		cdq
+		xor eax, edx
+		sub eax, edx
+		mov a#d, eax
  end if
-end macro
+ end macro 
 
-; Conditional assign (a = c ? d : 0)
+ ; Conditional assign (a = c ? d : 0)
  macro cassign a, c, t
-	neg  c
-	sbb  a, a
-	and  a, t
+		neg  c
+		sbb  a, a
+		and  a, t
  end macro

@@ -5,7 +5,7 @@ else
 end if
 
 ; MAX_RESETCNT should NOT be more than the number of times search is called per second/core,
-; which is about half of nps/core (the other half comes from qsearch). Higher setting are
+; which is about half of nps/core (the other half comes from qsearch). Higher setting are 
 ; dangerous but lower settings lead to increased polling of the time
 ; MIN_RESETCNT should be fairly low, not more than 50, say.
 ; official sf polls the timer every 4096 calls, which is much too often
@@ -212,3 +212,5 @@ EndgameScale_KPKP_index    = 13 ; KP vs KP
 
 ENDGAME_SCALE_MAX_INDEX = 16
 
+; Bonus calculation constants
+BONUS_MAX = 10692

@@ -123,28 +123,6 @@ end virtual
 
 	.CuckooLoopS2Squares:
 
-	; We are inside the s2 for loop, and now we finally get down to business..
-
-	; First, we have to simulate this if-test, shown from StockFish.
-	;
-	;  ===>  if (PseudoAttacks[type_of(pc)][s1] & s2) <===
-	;        {
-	;        <snip>
-	;        }
-	;
-	; Note: To understand the meaning of the '&' operator in the above C++ if test, you have
-	;       to be familiar with operator overloads in C++. There's some auto-magical stuff going on there
-	;       that, upon first glance, may not seem readily translatable to asm. For convenience, the relevant
-	;       overload is repeated here:
-	;
-	;     inline Bitboard operator&(Bitboard b, Square s) {
-    ;          assert(s >= SQ_A1 && s <= SQ_H8);             <====== Ignore this line
-    ;          return b & SquareBB[s];                       <====== This is what we need to simulate
-    ;     }
-	;
-    ; First, this call to a new PseudoAttacks macro in asmFish populates r9 with the BitBoard of Attackable Squares
-	; for the current PieceType (r8) from the s1 Square (r14).
-
 		cmp r8, Pawn
 		je .cuckoo_init_end
 
@@ -155,10 +133,6 @@ end virtual
 
 		PseudoAttacksAtFreshBoardState r9, r8, r14, r10
 
-		; This is the equivalent of:
-		;      ====> b & SquareBB[s]
-		; ... potentially jumping to cuckoo_init_end.
-		;
 		; You won't find the equivalent of "SquareBB" in asmfish. It's just a series of power-of-2 bitflags
 		; so we just emulate it in assembler by shifting a 1-bit to the appropriate position (indicated by r11)
 
@@ -168,34 +142,30 @@ end virtual
 		and r15, r9  ; Logically AND in the r9 bitboard output from our earlier pseudoattacks call
 		jz .cuckoo_init_end
 
-		;-------------------------------------------
-		; <*><*><*><*><*><*><*><*><*><*><*><*><*><*>
-		; <*>      Cuckoo table init logic       <*>
-		; <*><*><*><*><*><*><*><*><*><*><*><*><*><*>
-		;-------------------------------------------
+	; Cuckoo Table Init Logic
 
 	; Move move = make_move(s1, s2);
 		cuckoo_makeMove rax, r14, r11
 		mov qword[.ckoo_move], rax  ; save the cuckoo move
 
 	; Key key = Zobrist::psq[pc][s1] ^ Zobrist::psq[pc][s2] ^ Zobrist::side;
-		imul  esi, ebx, 64*8 				; get offset to keys for white or black
-		lea   rdi, [Zobrist_Pieces+8*rsi]	; now get address to that set of keys
-		mov   rsi, r8 						; get piecetype into rsi
-		shl   rsi, 6						; get offset to polyglots for current pieceType (64*pt)
-		add   rsi, r14						; add in s1 square offset within addressed table
+		imul  esi, ebx, 64*8
+		lea   rdi, [Zobrist_Pieces+8*rsi]
+		mov   rsi, r8
+		shl   rsi, 6
+		add   rsi, r14
 
-		mov   rcx, qword[rdi+8*rsi]			; get the s1 component of the key;
-		mov   rdx, rcx						; save the s1 component
+		mov   rcx, qword[rdi+8*rsi]
+		mov   rdx, rcx
 
-		sub   rsi, r14						; back out the s1 offset
-		add   rsi, r11						; add in the s2 offset
-		mov   rcx, qword[rdi+8*rsi]			; get the s2 component of the key;
+		sub   rsi, r14
+		add   rsi, r11
+		mov   rcx, qword[rdi+8*rsi]
 
-		xor   rcx, rdx						; xor the s1 and s2 components together.
+		xor   rcx, rdx
 		mov   rdx, qword[Zobrist_side]
-		xor   rcx, rdx						; xor the zobrist side to obtain the key
-		mov   qword[.ckoo_key], rcx 		; save the cuckoo key
+		xor   rcx, rdx
+		mov   qword[.ckoo_key], rcx
 
 	; unsigned int i = H1(key);
 	;  eax will be the current cuckoo index, "i" (as it is called in stockfish)
@@ -229,7 +199,7 @@ end virtual
 		cuckoo_H1 rdx,rcx
 
 	; (i == H1(key)) ?
-		cmp   r12,rdx
+		cmp   r12, rdx
 		jne   @f
 
 	; then i = H2(key)
@@ -243,17 +213,15 @@ end virtual
 		cuckoo_H1 r12,rcx ; new index is h1-based
 		mov   dword[.ckoo_index],r12d
 		jmp .cuckoo_swapping_loop
-		; } // end while loop
+		; end while loop
 
 	.cuckoo_init_end:
-		add   r11, 1  ; <- s2++
+		add   r11, 1
 		cmp   r11, 64
 		jb   .CuckooLoopS2Squares
 
-		add   r14, 1  ; s1++
-		cmp   r14, 63 ; if s1 is 63, then s2 would
-					  ; be init'd to 64 at the start of the s2 loop.
-					  ; so we instead cut the s1 loop 1 short.
+		add   r14, 1
+		cmp   r14, 63
 
 		jb   .CuckooLoopS1Squares
 
@@ -266,7 +234,6 @@ end virtual
 		jb   .CuckooLoopColor
 
 ; End of cuckoo init processing
-;======================================================
 
 		lea   rdi, [IsPawnMasks]
 		mov   eax, 00FF0000H
@@ -369,12 +336,12 @@ end virtual
 
 .PSQR:
  dd 0,0,0,0
- dd (-11 shl 16) + ( 7), (  6 shl 16) + (-4), ( 7 shl 16) + ( 8), ( 3 shl 16) + (-2)
- dd (-18 shl 16) + (-4), ( -2 shl 16) + (-5), (19 shl 16) + ( 5), (24 shl 16) + ( 4)
- dd (-17 shl 16) + ( 3), ( -9 shl 16) + ( 3), (20 shl 16) + (-8), (35 shl 16) + (-3)
- dd ( -6 shl 16) + ( 8), (  5 shl 16) + ( 9), ( 3 shl 16) + ( 7), (21 shl 16) + (-6)
- dd ( -6 shl 16) + ( 8), ( -8 shl 16) + (-5), (-6 shl 16) + ( 2), (-2 shl 16) + ( 4)
- dd ( -4 shl 16) + ( 3), ( 20 shl 16) + (-9), (-8 shl 16) + ( 1), (-4 shl 16) + (18)
+ dd (-11 shl 16) + (-3), (  7 shl 16) + ( -1), (  7 shl 16) + ( 7), (17 shl 16) + ( 2)
+ dd (-16 shl 16) + (-2), ( -3 shl 16) + (  2), ( 23 shl 16) + ( 6), (23 shl 16) + (-1)
+ dd (-14 shl 16) + ( 7), ( -7 shl 16) + ( -4), ( 20 shl 16) + (-8), (24 shl 16) + ( 2)
+ dd ( -5 shl 16) + (13), ( -2 shl 16) + ( 10), ( -1 shl 16) + (-1), (12 shl 16) + (-8)
+ dd (-11 shl 16) + (16), (-12 shl 16) + (  6), ( -2 shl 16) + ( 1), ( 4 shl 16) + (16)
+ dd ( -2 shl 16) + ( 1), ( 20 shl 16) + (-12), (-10 shl 16) + ( 6), (-2 shl 16) + (25)
  dd 0,0,0,0
 
  dd (-161 shl 16) + (-105), (-96 shl 16) + (-82), (-80 shl 16) + (-46), (-73 shl 16) + (-14)
@@ -386,14 +353,14 @@ end virtual
  dd (-63 shl 16) + (-65), (-19 shl 16) + (-50), (5 shl 16) + (-24), (14 shl 16) + (13)
  dd (-195 shl 16) + (-109), (-67 shl 16) + (-89), (-42 shl 16) + (-50), (-29 shl 16) + (-13)
 
- dd (-64 shl 16) + (-58), (-13 shl 16) + (-31), (-25 shl 16) + (-37), (-34 shl 16) + (-19)
- dd (-20 shl 16) + (-34), (0 shl 16) + (-9),	(12 shl 16) + (-14),   (1 shl 16) + (4)
- dd (-9 shl 16) + (-23), (27 shl 16) + (0),	(1 shl 16) + (-3),  (11 shl 16) + (16)
- dd (-11 shl 16) + (-26), (28 shl 16) + (-3),	(21 shl 16) + (-5),  (32 shl 16) + (16)
- dd (-11 shl 16) + (-26), (27 shl 16) + (-4),	(16 shl 16) + (-7),   (31 shl 16) + (14)
- dd (-17 shl 16) + (-24), (16 shl 16) + (-2),	(-8 shl 16) + (0),   (2 shl 16) + (13)
- dd (-23 shl 16) + (-34), (-3 shl 16) + (-10),	(6 shl 16) + (-12),  (-2 shl 16) + (6)
- dd (-55 shl 16) + (-55), (-11 shl 16) + (-32), (-19 shl 16) + (-36), (-29 shl 16) + (-17)
+ dd (-49 shl 16) + (-58), (- 7 shl 16) + (-31), (-10 shl 16) + ( -37), (-34 shl 16) + (-19)
+ dd (-24 shl 16) + (-34), (  9 shl 16) + ( -9), ( 15 shl 16) + ( -14), (  1 shl 16) + ( 4)
+ dd ( -9 shl 16) + (-23), ( 22 shl 16) + (  0), ( -3 shl 16) + ( -3), ( 12 shl 16) + ( 16)
+ dd (  4 shl 16) + (-26), (  9 shl 16) + ( -3), ( 18 shl 16) + ( -5), ( 40 shl 16) + ( 16)
+ dd ( -8 shl 16) + (-26), ( 27 shl 16) + ( -4), ( 13 shl 16) + ( -7), ( 30 shl 16) + ( 14)
+ dd (-17 shl 16) + (-24), ( 14 shl 16) + ( -2), ( -6 shl 16) + (  0), (  6 shl 16) + ( 13)
+ dd (-19 shl 16) + (-34), (-13 shl 16) + (-10), (  7 shl 16) + ( -12), (-11 shl 16) + (  6)
+ dd (-47 shl 16) + (-55), ( -7 shl 16) + (-32), (-17 shl 16) + ( -36), (-29 shl 16) + (-17)
 
  dd (-25 shl 16) + (0), (-16 shl 16) + (0), (-16 shl 16) + (0), (-9 shl 16) + (0)
  dd (-21 shl 16) + (0), (-8 shl 16) + (0), (-3 shl 16) + (0), (0 shl 16) + (0)

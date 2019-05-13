@@ -77,7 +77,7 @@ namespace {
   bool is_KQKRPs(const Position& pos, Color us) {
     return  !pos.count<PAWN>(us)
           && pos.non_pawn_material(us) == QueenValueMg
-          && pos.count<QUEEN>(us)  == 1
+          && pos.count<QUEEN>(us) == 1
           && pos.count<ROOK>(~us) == 1
           && pos.count<PAWN>(~us) >= 1;
   }
@@ -152,7 +152,7 @@ Entry* probe(const Position& pos) {
 
   // OK, we didn't find any special evaluation function for the current material
   // configuration. Is there a suitable specialized scaling function?
-  EndgameBase<ScaleFactor>* sf;
+  const EndgameBase<ScaleFactor>* sf;
 
   if ((sf = pos.this_thread()->endgames.probe<ScaleFactor>(key)) != nullptr)
   {

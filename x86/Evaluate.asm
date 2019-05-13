@@ -1,14 +1,13 @@
 BishopPawns         = (  3 shl 16) + (  7)
 CloseEnemies        = (  6 shl 16) + (  0)
 Hanging             = ( 57 shl 16) + ( 32)
-HinderPassedPawn    = (  8 shl 16) + (  0)
 KingProtector_Pt    = ( -6 shl 16) + ( -6)
 KnightOnQueen       = ( 21 shl 16) + ( 11)
 LongDiagonalBishop  = ( 46 shl 16) + (  0)
 MinorBehindPawn     = ( 16 shl 16) + (  0)
-Overload            = ( 13 shl 16) + (  6)
 PawnlessFlank       = ( 19 shl 16) + ( 84)
 RookOnPawn          = ( 10 shl 16) + ( 30)
+Overload            = ( 13 shl 16) + (  6)
 SliderOnQueen       = ( 42 shl 16) + ( 21)
 ThreatByKing        = (23 shl 16)  + ( 76)
 ThreatByPawnPush    = ( 45 shl 16) + ( 40)
@@ -168,13 +167,11 @@ macro EvalPieces Us, Pt
 	Outpost1	  = ((36 shl 16) + (12))
 	KingAttackWeight  = 77
 	MobilityBonus	  equ MobilityBonus_Knight
-	; KingProtector_Pt  = ((-6 shl 16) + (-6))
   else if Pt = Bishop
 	Outpost0	  = (( 9 shl 16) + (2))
 	Outpost1	  = ((15 shl 16) + (5))
 	KingAttackWeight  = 55
 	MobilityBonus	  equ MobilityBonus_Bishop
-	; KingProtector_Pt  = ((-6 shl 16) + (-6))
   else if Pt = Rook
 	KingAttackWeight  = 44
 	MobilityBonus	  equ MobilityBonus_Rook
@@ -320,35 +317,34 @@ OutpostDone:
 		subadd   esi, eax
 
     ; Bonus for	bishop on a long diagonal which	can "see" both center squares
-		mov   rdx, qword[rbp + Pos.typeBB + 8*Pawn]
-      BishopAttacks   rax, r14, rdx, rcx
-		; bts   rax, r14
+		mov   rdx, qword[rbp	+ Pos.typeBB + 8*Pawn]
+      BishopAttacks   rax, r14,	rdx,	rcx
 		lea   edx, [rsi + (Them - Us)*LongDiagonalBishop]
 		mov   r8, (FileDBB or FileEBB) and (Rank4BB or Rank5BB)
 		and   rax, r8
-		lea   rcx, [rax - 1]
+		lea   rcx, [rax	- 1]
 		test   rcx, rax
 		cmovnz   esi, edx
     end if
 
-    if PEDANTIC = 1 & Pt = Bishop
-		lea   rdx, [rbp + Pos.board + r14]
+    if PEDANTIC	= 1 & Pt = Bishop
+		lea   rdx, [rbp	+ Pos.board + r14]
 		cmp   byte[rbp + Pos.chess960],	0
 		je   @2f
-		mov   rcx, DELTA_E + 8*(1-2*Us)
+		mov   rcx, DELTA_E +	8*(1-2*Us)
 		cmp   r14d, SQ_A1 xor (56*Us)
 		je   @1f
-		mov   rcx, DELTA_W + 8*(1-2*Us)
+		mov   rcx, DELTA_W +	8*(1-2*Us)
 		cmp   r14d, SQ_H1 xor (56*Us)
 		jne   @2f
     @1:
 		cmp   byte[rdx + rcx], 8*Us + Pawn
 		jne   @2f
 		mov   eax, 4*TrappedBishopA1H1
-		cmp   byte[rdx + rcx + 8*(1-2*Us)], 0
+		cmp   byte[rdx + rcx	+ 8*(1-2*Us)], 0
 		jne   @1f
 		mov   eax, 2*TrappedBishopA1H1
-		cmp   byte[rdx + rcx + rcx], 8*Us + Pawn
+		cmp   byte[rdx + rcx	+ rcx],	8*Us + Pawn
 		je   @1f
 		mov   eax, TrappedBishopA1H1
     @1:
@@ -535,13 +531,10 @@ KingSafetyDoneRet:
 
 		mov    rcx, r11
 		and    rcx, 7
-
 		mov   rcx, qword[KingFlank+8*rcx]
-
 		mov   rax, Camp
 		and   rax, rcx
 		and   rax, AttackedByThem
-
 		mov   rdx, qword[.ei.attackedBy+8*(8*Us+Pawn)]
 		not   rdx
 		and   rdx, qword[.ei.attackedBy2+8*Them]
@@ -566,7 +559,7 @@ KingSafetyDoneRet:
 		lea   eax, [rcx+7]
 		cmovs edx, eax
 		sar   edx, 3
-		sub   edi, edx ; edi = kingDanger
+		sub   edi, edx ; edi =	kingDanger
 
 		and   r8, qword[.ei.attackedBy2+8*Them]
 		_andn r8, r8, AttackedByUs
@@ -637,7 +630,7 @@ KingSafetyDoneRet:
 		or    rdx, r9
 
 		_popcnt rax, rdx, rcx
-		imul  eax, 129
+		imul  eax, 150
 		add   edi, eax
 
 	; Compute the king danger score and subtract it from the evaluation
@@ -740,9 +733,8 @@ AllDone:
   end if
 		or   rax, rdx
 		_popcnt   rax, rax, r9
-; TODO: Find a register-based solution for duplicate tropism computation
 		imul   eax, CloseEnemies
-		sub   esi, eax ; king tropism
+		sub   esi, eax		; king tropism
 
   if Us eq White
 		add   dword[.ei.score], esi
@@ -791,8 +783,8 @@ macro ShelterStorm Us
 		mov   r9, PiecesUs
 		and   r9, r8
 	; r9 = ourPawns
-		and   ecx, 7
-	; ecx = file of ksq
+        and   ecx, 7
+    ; ecx = file of ksq
 		mov   r10, PiecesThem
 		and   r10, r8
 	; r10 = theirPawns
@@ -812,12 +804,6 @@ macro ShelterStorm Us
         sbb  eax, eax  ; dest = dest - (src + CF);
         and  eax, -369 ; saves instructions and keeps code linear
         add  eax, 374  ; eax = safety
-
-; Note: A slower alternative here is:
-        ; test rax, rax
-        ; mov  rax, 5
-        ; jz  @f
-        ; mov  rax, 374
 
 @@:
 	if Us eq Black
@@ -1034,12 +1020,12 @@ ThreatMinorLoop:
 		and   eax, dword[IsNotPawnMasks+rcx]
 		imul   eax, ThreatByRank
 		addsub   esi, eax
+
 		_blsr   r8, r8, rcx
 		jnz   ThreatMinorLoop
 ThreatMinorDone:
 
-
-; // b = (weak) & attackedBy[Us][ROOK];
+; b = (weak) & attackedBy[Us][ROOK];
 		mov   rdx, r9 ; r9 = weak
 		and   rdx, qword[.ei.attackedBy+8*(8*Us+Rook)]
 		jz   ThreatRookDone
@@ -1055,6 +1041,7 @@ ThreatRookLoop:
 		and   eax, dword[IsNotPawnMasks+rcx]
 		imul   eax, ThreatByRank
 		addsub   esi, eax
+
 
 		_blsr   rdx, rdx, rcx
 		jnz   ThreatRookLoop
@@ -1165,7 +1152,7 @@ WeakDone:
 ; weak = pos.pieces(Them) & ~stronglyProtected & attackedBy[Us][ALL_PIECES];
 		mov    r8, PiecesPawn
 		_andn  r8, r8, PiecesThem ; r8 = nonPawnEnemies
-		and    r8, notStronglyProtected
+		and  r8, notStronglyProtected
 		and    r8, AttackedByUs
 		and    r8, AttackedByThem
 		_popcnt  r8, r8, rdx
@@ -1246,16 +1233,10 @@ NextPawn:
 		mov   rax, qword[ForwardBB+8*(64*Us+r8)]
 		add   r8d, Up
 	; r8d = blockSq
-		mov   rdx, PiecesThem
-		and   rax, rdx
-		setnz  al
-		movzx  eax, al
-		imul   eax, HinderPassedPawn
-		subadd   dword[.ei.score], eax
 
-		mov  edi, dword[PassedDanger + 4*rcx]
+                mov  edi, dword[PassedDanger + 4*rcx]
 	; ecx = r
-        ; edi = PassedDanger[r]
+        ; edi = int w = PassedDanger[r]
 
 
   if Us = White
@@ -1291,7 +1272,7 @@ NextPawn:
 		add   esi, eax
 
 		mov   r10, qword[ForwardBB+8*(64*Us+s)]
-		lea   eax, [rdi+2*rcx]
+		xor  eax, eax
 		bt   PiecesUs, r8
 		jc   AddToBonus	; the pawn is blocked by us
 		mov   r11, r10
@@ -1739,7 +1720,6 @@ end virtual
 		EvalSpace   White
 .SkipSpace:
 
-		mov   r14, rdi
 		mov   r15, qword[.ei.me]
 
 	; Evaluate position potential for the winning side
@@ -1754,11 +1734,12 @@ end virtual
 		and   r8, rcx
 		cmovnz   r8d, eax
 
-		_popcnt   rax, r11,	rcx
-		movzx   edx, byte[rdi+PawnEntry.asymmetry]
-		lea   edx, [rdx+rax-17]
+		_popcnt   rax, r11, rcx
+		movzx  edx, byte[rdi+PawnEntry.asymmetry]
+		mov  r14d, edx ; save for later
+		add  edx, eax
 		lea   r8d, [r8+4*rax]
-		lea   r8d, [r8+8*rdx]
+		lea   r8d, [r8+8*rdx-118]
 
 		movzx   r9d, word[rbx+State.npMaterial+2*0]
 		movzx   ecx, word[rbx+State.npMaterial+2*1]
@@ -1807,7 +1788,7 @@ end virtual
 		add   esi, eax
 
 	; esi = score
-	; r14 = ei.pi
+	; r14d = byte[rdi+PawnEntry.asymmetry]
 
 	; scale_factor() computes the scale factor for the winning side
 
@@ -1841,7 +1822,6 @@ end virtual
 		mov   r10, qword[rbp+Pos.typeBB+8*Bishop]
 		mov   r8, qword[rbp+Pos.typeBB+8*White]
 		mov   r9, qword[rbp+Pos.typeBB+8*Black]
-		mov   edi, dword[rbx+State.npMaterial]
 		and   r8, r10
 		and   r9, r10
 		test   ecx, -17 ; not 16
@@ -1858,10 +1838,11 @@ end virtual
 		jz   @f
 		or   r8, r9
 		jnz  @f
-		cmp   edi, (BishopValueMg shl 16) + BishopValueMg
+		mov   r8d, dword[rbx+State.npMaterial]
+		cmp   r8d, (BishopValueMg shl 16) + BishopValueMg
 		mov  edx, 2
 		jne  @f
-		mov   eax, 31
+		lea  eax, [4*r14+8]
 		jmp   .ScaleFactorDone
 
 	@@:
@@ -1884,18 +1865,18 @@ end virtual
   ;v /= int(PHASE_MIDGAME);
 		movzx edx, byte[r15+MaterialEntry.gamePhase] ; edx = phase
 		mov   ecx, dword[rbp+Pos.sideToMove]
-		mov   edi, 128
-		sub   edi, edx
-		imul   edi, r12d
+		mov   r8d, 128
+		sub   r8d, edx
+		imul   r8d, r12d
 		mov   r11d, ecx
-		imul   edi, eax
-		lea   r14d, [rdi+3FH]
-		test   edi, edi
-		cmovs   edi, r14d
+		imul   r8d, eax
+		lea   r10d, [r8+63]
+		test   r8d, r8d
+		cmovs   r8d, r10d
 		imul   esi, edx
-		sar   edi, 6
-		lea   edx, [rdi+rsi]
-		lea   eax, [rdx+7FH]
+		sar   r8d, 6
+		lea   edx, [r8+rsi]
+		lea   eax, [rdx+127]
 		test   edx, edx
 		cmovs   edx, eax
 		neg   r11d
