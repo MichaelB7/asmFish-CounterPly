@@ -97,13 +97,21 @@ PawnValueMg   = 142
 KnightValueMg = 784
 BishopValueMg = 828
 RookValueMg   = 1286
+<<<<<<< HEAD
 QueenValueMg  = 2528
+=======
+QueenValueMg  = 2529
+>>>>>>> remotes/upstream/master
 
 PawnValueEg   = 207
 KnightValueEg = 868
 BishopValueEg = 916
 RookValueEg   = 1378
+<<<<<<< HEAD
 QueenValueEg  = 2698
+=======
+QueenValueEg  = 2687
+>>>>>>> remotes/upstream/master
 
 MidgameLimit = 15258
 EndgameLimit = 3915
