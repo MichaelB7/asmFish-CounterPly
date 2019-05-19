@@ -6,11 +6,7 @@ KnightOnQueen       = ( 21 shl 16) + ( 11)
 LongDiagonalBishop  = ( 46 shl 16) + (  0)
 MinorBehindPawn     = ( 16 shl 16) + (  0)
 PawnlessFlank       = ( 19 shl 16) + ( 84)
-<<<<<<< HEAD
-RookOnPawn          = ( 10 shl 16) + ( 30)
-=======
 RookOnPawn          = ( 10 shl 16) + ( 29)
->>>>>>> remotes/upstream/master
 Overload            = ( 13 shl 16) + (  6)
 SliderOnQueen       = ( 42 shl 16) + ( 21)
 ThreatByKing        = ( 22 shl 16) + ( 78)
@@ -1045,10 +1041,6 @@ ThreatRookLoop:
 		imul   eax, ThreatByRank
 		addsub   esi, eax
 
-<<<<<<< HEAD
-
-=======
->>>>>>> remotes/upstream/master
 		_blsr   rdx, rdx, rcx
 		jnz   ThreatRookLoop
 ThreatRookDone:
