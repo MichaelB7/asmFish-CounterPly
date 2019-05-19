@@ -85,6 +85,13 @@ namespace {
     return d > 17 ? 0 : 29 * d * d + 138 * d - 134;
   }
 
+  // Add a small random component to draw evaluations to keep search dynamic 
+  // and to avoid 3fold-blindness.
+  Value value_draw(Depth depth, Thread* thisThread) {
+    return depth < 4 ? VALUE_DRAW 
+                     : VALUE_DRAW + Value(2 * (thisThread->nodes.load(std::memory_order_relaxed) % 2) - 1);
+  }
+
   // Skill structure is used to implement strength limit
   struct Skill {
     explicit Skill(int l) : level(l) {}
@@ -380,7 +387,7 @@ void Thread::search() {
           if (rootDepth >= 5 * ONE_PLY)
           {
               Value previousScore = rootMoves[pvIdx].previousScore;
-              delta = Value(18);
+              delta = Value(20);
               alpha = std::max(previousScore - delta,-VALUE_INFINITE);
               beta  = std::min(previousScore + delta, VALUE_INFINITE);
 
@@ -394,9 +401,11 @@ void Thread::search() {
           // Start with a small aspiration window and, in the case of a fail
           // high/low, re-search with a bigger window until we don't fail
           // high/low anymore.
+          int failedHighCnt = 0;
           while (true)
           {
-              bestValue = ::search<PV>(rootPos, ss, alpha, beta, rootDepth, false);
+              Depth adjustedDepth = std::max(ONE_PLY, rootDepth - failedHighCnt * ONE_PLY);
+              bestValue = ::search<PV>(rootPos, ss, alpha, beta, adjustedDepth, false);
 
               // Bring the best move to the front. It is critical that sorting
               // is done with a stable algorithm because all the values but the
@@ -429,12 +438,17 @@ void Thread::search() {
 
                   if (mainThread)
                   {
+                      failedHighCnt = 0;
                       failedLow = true;
                       Threads.stopOnPonderhit = false;
                   }
               }
               else if (bestValue >= beta)
+              {
                   beta = std::min(bestValue + delta, VALUE_INFINITE);
+                  if (mainThread)
+                	  ++failedHighCnt;
+              }
               else
                   break;
 
@@ -535,7 +549,7 @@ namespace {
         && !rootNode
         && pos.has_game_cycle(ss->ply))
     {
-        alpha = VALUE_DRAW;
+        alpha = value_draw(depth, pos.this_thread());
         if (alpha >= beta)
             return alpha;
     }
@@ -584,7 +598,8 @@ namespace {
         if (   Threads.stop.load(std::memory_order_relaxed)
             || pos.is_draw(ss->ply)
             || ss->ply >= MAX_PLY)
-            return (ss->ply >= MAX_PLY && !inCheck) ? evaluate(pos) : VALUE_DRAW;
+            return (ss->ply >= MAX_PLY && !inCheck) ? evaluate(pos) 
+                                                    : value_draw(depth, pos.this_thread());
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
         // would be at best mate_in(ss->ply+1), but if alpha is already bigger because
@@ -925,7 +940,6 @@ moves_loop: // When in check, search starts from here
               extension = ONE_PLY;
       }
       else if (    givesCheck // Check extension (~2 Elo)
-               && !moveCountPruning
                &&  pos.see_ge(move))
           extension = ONE_PLY;
 
