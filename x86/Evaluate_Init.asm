@@ -91,7 +91,7 @@ Evaluate_Init:
 
              calign   4
 .PassedDanger:
- dd 0, 0, 0, 3, 7, 11, 20, 0
+ dd 0, 0, 0, 3, 6, 11, 18, 0
 
 .MobilityBonus_Knight:
  dd (-62 shl 16) + (-81)
