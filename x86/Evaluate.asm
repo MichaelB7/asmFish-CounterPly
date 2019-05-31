@@ -6,6 +6,7 @@ KnightOnQueen       = ( 20 shl 16) + ( 12)
 LongDiagonalBishop  = ( 44 shl 16) + (  0)
 MinorBehindPawn     = ( 16 shl 16) + (  0)
 PawnlessFlank       = ( 18 shl 16) + ( 94)
+RestrictedPiece     = (  7 shl 16) + (  6)
 RookOnPawn          = ( 10 shl 16) + ( 28)
 Overload            = ( 12 shl 16) + (  6)
 SliderOnQueen       = ( 49 shl 16) + ( 21)
@@ -1162,6 +1163,16 @@ WeakDone:
 		_popcnt  r8, r8, rdx
 		imul   r8d, Overload
 		addsub  esi, r8d
+
+; // Bonus for restricting their piece moves
+		mov  r9, qword[.ei.attackedBy+8*(8*Them+Pawn)]
+		mov  rax, qword[.ei.attackedBy2+8*Them]
+		_andn  r10, r9, AttackedByThem
+		_andn  r10, rax, r10
+		and    r10, AttackedByUs
+		_popcnt  r10, r10, rdx
+		imul  r10d, RestrictedPiece
+		addsub  esi, r10d
 
 end macro
 
