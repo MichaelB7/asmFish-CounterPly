@@ -1053,7 +1053,14 @@ ThreatRookLoop:
 		jnz   ThreatRookLoop
 ThreatRookDone:
 
-		_andn   rax, AttackedByThem, r9
+		mov    r8, PiecesPawn
+		_andn  r8, r8, PiecesThem ; nonPawnEnemies
+		and  r8, qword[.ei.attackedBy2+8*Us]
+		mov  rax, AttackedByThem
+		not  rax
+		or  rax, r8
+		and  rax, r9
+
 		_popcnt   rax, rax, rcx
 		imul   eax, Hanging
 		addsub   esi, eax
@@ -1156,14 +1163,6 @@ WeakDone:
 
 ; // Bonus for overload (non-pawn enemies attacked once or more and defended exactly once)
 ; weak = pos.pieces(Them) & ~stronglyProtected & attackedBy[Us][ALL_PIECES];
-		mov    r8, PiecesPawn
-		_andn  r8, r8, PiecesThem ; r8 = nonPawnEnemies
-		and  r8, notStronglyProtected
-		and    r8, AttackedByUs
-		and    r8, AttackedByThem
-		_popcnt  r8, r8, rdx
-		imul   r8d, Overload
-		addsub  esi, r8d
 
 ; // Bonus for restricting their piece moves
 		mov  r9, qword[.ei.attackedBy+8*(8*Them+Pawn)]
