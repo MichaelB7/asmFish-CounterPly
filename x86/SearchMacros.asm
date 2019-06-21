@@ -898,7 +898,6 @@ end if
 		mov   dword[.reductionOffset], eax
 		xor   eax, eax
 		mov   byte[.skipQuiets], al
-		mov   dword[.ttCapture], eax
 
 
   if RootNode = 1
@@ -939,6 +938,22 @@ end if
 		and   al, byte[.ttHit]
 		mov   dword[.pvExact], eax
   end if
+
+	mov   eax, dword[.ttMove]
+	test  eax, eax
+	setnz cl
+	; ecx = ttMove
+	mov  edx, eax
+	and  edx, 63
+	shr  eax, 14
+	movzx  edx, byte[rbp+Pos.board+rdx]
+	or  dl, byte[_CaptureOrPromotion_or+rax]
+	and  dl, byte[_CaptureOrPromotion_and+rax]
+	; edx = pos.capture_or_promotion(ttMove)
+	test  edx, edx
+	setnz  al
+	and  eax, ecx
+	mov  dword[.ttCapture], eax
 
   ; Step 12. Loop through moves
 	 calign	  8
@@ -1209,14 +1224,6 @@ end if
 		add   rax, qword[rbp+Pos.counterMoveHistory]
 		mov   dword[rbx+State.currentMove],	ecx
 		mov   qword[rbx+State.counterMoves], rax
-		xor   eax, eax
-		xor   edx, edx
-		cmp   byte[.captureOrPromotion], 0
-	      setne   al
-		cmp   ecx, dword[.ttMove]
-	       sete   dl
-		and   eax, edx
-		 or   dword[.ttCapture], eax
 
     ; Step 15. Make the move
 	       call   Move_Do__Search
