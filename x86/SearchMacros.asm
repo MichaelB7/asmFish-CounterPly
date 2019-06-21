@@ -1513,14 +1513,14 @@ end if
 		mov   r13d, dword[.depth]
 		mov   edi, dword[.bestValue]
 		stat_bonus  r10d, rax, r13
-		add   r13, 1
+		add   r13d, 1
 		stat_bonus  r14d, rax, r13
-		sub   r13, 1
+		mov  r13d, r10d
     ; r15d = offset of [piece_on(prevSq),prevSq]
     ; r12d = move
-    ; r13d = depth
+    ; r13d = temp_r10 (normally r13d = depth)
     ; r10d = bonus
-    ; r14d = excludedMove
+    ; r14d = statbonus (depth + 1)
 		mov   edi, dword[.bestValue]
 		cmp   dword[.moveCount], 0
 		 je   .20Mate
@@ -1550,7 +1550,7 @@ end if
 		mov   r10d, r14d
     ; r10d = penalty
 		cmp   dword[rbx-1*sizeof.State+State.moveCount], 1
-		jne   .20TTStore
+		jne   @3f
 		cmp   byte[rbx+State.capturedPiece], 0
 		jne   .20TTStore
 		mov  r11d, r10d
@@ -1560,6 +1560,24 @@ end if
 		abs_bonus r11d, r10d
 		UpdateCmStats   (rbx-1*sizeof.State), r15, r11d, r10d, r8
 		jmp   .20TTStore
+
+@3:
+		cmp   byte[rbx+State.capturedPiece], 0
+		jne   .20TTStore
+		mov  eax, dword[rbx-1*sizeof.State+State.killers]
+		test  eax, eax
+		jz  .20TTStore
+		cmp  eax, dword[rbx-1*sizeof.State+State.currentMove]
+		jne  .20TTStore
+		mov  r10d, r13d
+		mov  r11d, r10d
+		neg  r11d ; negative bonus
+		cmp   r10d, BONUS_MAX
+		jae   .20TTStore
+		abs_bonus r11d, r10d
+		UpdateCmStats   (rbx-1*sizeof.State), r15, r11d, r10d, r8
+		jmp   .20TTStore
+
 .20Mate:
 		mov   r14d, dword[.excludedMove]
 		mov   rax, qword[rbx+State.checkersBB]
@@ -1575,6 +1593,7 @@ end if
 	if PvNode = 1
 		jmp @f
 	else
+		mov  r13d, dword[.depth]
 		lea   edx, [r13-3*ONE_PLY]
 		or   edx, esi
 		js   .20TTStore
