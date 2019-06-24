@@ -129,7 +129,7 @@ macro EvalPieces Us, Pt
   local Outpost0, Outpost1, KingAttackWeight
   local MobilityBonus, ProtectorBonus
 
-  local NextPiece, NoPinned, NoKingRing, AllDone
+  local NextPiece, NoPinned, AllDone
   local OutpostElse, OutpostDone, NoBehindPawnBonus
   local NoEnemyPawnBonus, NoOpenFileBonus, NoTrappedByKing
   local SkipQueenPin, QueenPinLoop
@@ -145,6 +145,8 @@ macro EvalPieces Us, Pt
 	end macro
 	Them			= Black
 	Down 			= DELTA_S
+	Left = DELTA_SW
+	Right = DELTA_SE
 	OutpostRanks	  = 0x0000FFFFFF000000
   else
 	;addsub		  equ sub
@@ -157,6 +159,8 @@ macro EvalPieces Us, Pt
 	end macro
 	Them			= White
 	Down 			= DELTA_N
+	Left = DELTA_NE
+	Right = DELTA_NW
 	OutpostRanks	  = 0x000000FFFFFF0000
   end if
 
@@ -239,16 +243,28 @@ NoPinned:
 		mov   qword[.ei.attackedBy+8*(8*Us+Pt)], rax
 		mov   qword[.ei.attackedBy+8*(8*Us+0)], rdx
 
-		test   r9, qword[.ei.kingRing+8*Them]
-		jz   NoKingRing	; 74.44%
+		mov  rax, r9
+		and   rax, qword[.ei.kingRing+8*Them]
+		jz @f
+
+; & ~double_pawn_attacks_bb<Them>(pos.pieces(Them, PAWN)
+		mov   r10, qword[rbp+Pos.typeBB+8*Them]
+		and   r10, qword[rbp+Pos.typeBB+8*Pawn]
+		mov  rdx, r10
+		ShiftBB  Left, r10, rcx
+		ShiftBB  Right, rdx, rcx
+		and  r10, rdx
+		_andn rax, r10, rax
+		jz  @f
+
 		add   dword[.ei.kingAttackersCount+4*Us], 1
 		add   dword[.ei.kingAttackersWeight+4*Us], KingAttackWeight
 		mov   rax, qword[.ei.attackedBy+8*(8*Them+King)]
 		and   rax, r9
 		_popcnt   rax, rax, rcx
 		add   dword[.ei.kingAdjacentZoneAttacksCount+4*Us], eax
-NoKingRing:
 
+@@:
 		mov   rax, qword[.ei.mobilityArea+8*Us]
 		and   rax, r9
 
@@ -1120,6 +1136,8 @@ WeakDone:
 		and   rax, rdx
 
 		mov   rdx, rax
+
+; pawn_attacks_bb<Us>(b)
 		ShiftBB   Left, rax, rcx
 		ShiftBB   Right,	rdx, rcx
 		or   rax, rdx
