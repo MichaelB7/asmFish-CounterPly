@@ -1154,6 +1154,8 @@ end if
 		mov   r9d, 3
 		cmp   edx, dword[rbx-1*sizeof.State+State.statScore]
 		cmovl  r10d, r9d
+		cmp   dword[rbx-1*sizeof.State+State.moveCount], 1
+		cmove r10d, r9d
 		cmp   edi, r10d
 		jg  @f
   if CounterMovePruneThreshold <> 0     ; code assumes
