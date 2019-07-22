@@ -263,17 +263,17 @@ end virtual
 		mov   ecx, 8
 	  rep movsd
 
-		lea   rsi, [.PSQR]
+		lea   rsi, [.PBONUS]
 		mov   r15d, Pawn
-.TypeLoop:
-	       imul   r12d, r15d, 8*64
+		imul  r12d, r15d, 8*64
 		lea   r12, [r12+Scores_Pieces]
 		lea   r11, [r12+8*8*64]
-
 		xor   r14d, r14d
-  .RankLoop:
+
+		.RankLoop_PBonus:
 		xor   r13d, r13d
-    .FileLoop:
+
+		.FileLoop_PBonus:
 		mov   eax, dword[PieceValue_EG+4*r15]
 		mov   edx, dword[PieceValue_MG+4*r15]
 		shl   edx, 16
@@ -281,51 +281,83 @@ end virtual
 		shr   edx, 16
 		add   eax, dword[rsi]
 		add   rsi, 4
-		cmp   r15d, Pawn
-		 ja   @f
-		xor   edx, edx
-	      @@:
-	; eax = piece square value
-	; edx = non pawn material
 
-	; set white abcd
+		; eax = piece square value
+
+		; white abcdefgh
+		lea   edi, [8*r14+r13]
+		mov   dword[r12+8*rdi+0], eax
+
+		; black abcdefgh
+		neg   eax
+		xor   edi, 0111000b
+		mov   dword[r11+8*rdi+0], eax
+
+		add   r13d, 1
+		cmp   r13d, 8
+		jb   .FileLoop_PBonus
+
+		add   r14d, 1
+		cmp   r14d, 8
+		jb   .RankLoop_PBonus
+
+		lea   rsi, [.PSQR]
+		mov   r15d, Knight
+
+		.TypeLoop:
+		imul   r12d, r15d, 8*64
+		lea   r12, [r12+Scores_Pieces]
+		lea   r11, [r12+8*8*64]
+		xor   r14d, r14d
+
+		.RankLoop_Bonus:
+		xor   r13d, r13d
+
+		.FileLoop_Bonus:
+		mov   eax, dword[PieceValue_EG+4*r15]
+		mov   edx, dword[PieceValue_MG+4*r15]
+		shl   edx, 16
+		add   eax, edx
+		shr   edx, 16
+		add   eax, dword[rsi]
+		add   rsi, 4
+
+		; white abcd
 		lea   edi, [8*r14+r13]
 		mov   dword[r12+8*rdi+0], eax
 		mov   dword[r12+8*rdi+4], edx
 
-	; set white efgh
-		xor   edi, 0000111b
+		; white efgh
+		xor   edi, 00000111b
 		mov   dword[r12+8*rdi+0], eax
 		mov   dword[r12+8*rdi+4], edx
 
+		; black efgh
+		xor   edi,  00111000b
 		neg   eax
 		shl   edx, 16
-
-	; set black efgh
-		xor   edi, 0111000b
 		mov   dword[r11+8*rdi+0], eax
 		mov   dword[r11+8*rdi+4], edx
 
-	; set black abcd
-		xor   edi, 0000111b
+		; black abcd
+		xor   edi, 00000111b
 		mov   dword[r11+8*rdi+0], eax
 		mov   dword[r11+8*rdi+4], edx
 
 		add   r13d, 1
 		cmp   r13d, 4
-		 jb   .FileLoop
+		jb   .FileLoop_Bonus
 		add   r14d, 1
 		cmp   r14d, 8
-		 jb   .RankLoop
+		jb   .RankLoop_Bonus
 		add   r15d, 1
 		cmp   r15d, King
 		jbe   .TypeLoop
 
-	      .Return:
+		.Return:
 		add   rsp, .localsize
 		pop   r15 r14 r13 r12 r11 rdi rsi rbx
 		ret
-
 
              calign   4
 .PieceValue_MG:
@@ -333,17 +365,7 @@ end virtual
 .PieceValue_EG:
  dd 0, 0, PawnValueEg, KnightValueEg, BishopValueEg, RookValueEg, QueenValueEg, 0
 
-
 .PSQR:
- dd 0,0,0,0
- dd (-11 shl 16) + (-3), (  7 shl 16) + ( -1), (  7 shl 16) + ( 7), (17 shl 16) + ( 2)
- dd (-16 shl 16) + (-2), ( -3 shl 16) + (  2), ( 23 shl 16) + ( 6), (23 shl 16) + (-1)
- dd (-14 shl 16) + ( 7), ( -7 shl 16) + ( -4), ( 20 shl 16) + (-8), (24 shl 16) + ( 2)
- dd ( -5 shl 16) + (13), ( -2 shl 16) + ( 10), ( -1 shl 16) + (-1), (12 shl 16) + (-8)
- dd (-11 shl 16) + (16), (-12 shl 16) + (  6), ( -2 shl 16) + ( 1), ( 4 shl 16) + (16)
- dd ( -2 shl 16) + ( 1), ( 20 shl 16) + (-12), (-10 shl 16) + ( 6), (-2 shl 16) + (25)
- dd 0,0,0,0
-
  dd (-169 shl 16) + (-105), (-96 shl 16) + (-74), (-80 shl 16) + (-46), (-79 shl 16) + (-18)
  dd ( -79 shl 16) + ( -70), (-39 shl 16) + (-56), (-24 shl 16) + (-15), ( -9 shl 16) + (  6)
  dd ( -64 shl 16) + ( -38), (-20 shl 16) + (-33), (  4 shl 16) + ( -5), ( 19 shl 16) + ( 27)
@@ -379,7 +401,7 @@ end virtual
  dd ( -4 shl 16) + (-38), (10 shl 16) + (-18), ( 6 shl 16) + (-12), ( 8 shl 16) + (  1)
  dd ( -5 shl 16) + (-50), ( 6 shl 16) + (-27), (10 shl 16) + (-24), ( 8 shl 16) + ( -8)
  dd ( -2 shl 16) + (-75), (-2 shl 16) + (-52), ( 1 shl 16) + (-43), (-2 shl 16) + (-36)
- 
+
  dd (272 shl 16) + (  0), (325 shl 16) + ( 41), (273 shl 16) + ( 80), (190 shl 16) + ( 93)
  dd (277 shl 16) + ( 57), (305 shl 16) + ( 98), (241 shl 16) + (138), (183 shl 16) + (131)
  dd (198 shl 16) + ( 86), (253 shl 16) + (138), (168 shl 16) + (165), (120 shl 16) + (173)
@@ -388,3 +410,12 @@ end virtual
  dd (122 shl 16) + ( 87), (159 shl 16) + (164), ( 85 shl 16) + (174), ( 36 shl 16) + (189)
  dd ( 87 shl 16) + ( 40), (120 shl 16) + ( 99), ( 64 shl 16) + (128), ( 25 shl 16) + (141)
  dd ( 64 shl 16) + (  5), ( 87 shl 16) + ( 60), ( 49 shl 16) + ( 75), (  0 shl 16) + ( 75)
+
+ .PBONUS:
+ dd (  0 shl 16) + (  0), (  0 shl 16) + (  0), (  0 shl 16) + (  0), (  0 shl 16) + (  0), (  0 shl 16) + (  0), (  0 shl 16) + (  0), (  0 shl 16) + (  0), (  0 shl 16) + (  0)
+ dd (  0 shl 16) + (-11), ( -3 shl 16) + ( -4), ( 13 shl 16) + ( -1), ( 19 shl 16) + ( -4), ( 16 shl 16) + ( 17), ( 13 shl 16) + (  7), (  4 shl 16) + (  4), ( -4 shl 16) + (-13)
+ dd (-16 shl 16) + ( -8), (-12 shl 16) + ( -6), ( 20 shl 16) + ( -3), ( 21 shl 16) + (  0), ( 25 shl 16) + (-11), ( 29 shl 16) + (  3), (  0 shl 16) + (  0), (-27 shl 16) + ( -1)
+ dd (-11 shl 16) + (  3), (-17 shl 16) + (  6), ( 11 shl 16) + (-10), ( 21 shl 16) + (  1), ( 32 shl 16) + ( -6), ( 19 shl 16) + (-11), ( -5 shl 16) + (  0), (-14 shl 16) + ( -2)
+ dd (  4 shl 16) + ( 13), (  6 shl 16) + (  7), ( -8 shl 16) + (  3), (  3 shl 16) + ( -5), (  8 shl 16) + (-15), ( -2 shl 16) + ( -1), (-19 shl 16) + (  9), ( -5 shl 16) + ( 13)
+ dd ( -5 shl 16) + ( 25), (-19 shl 16) + ( 20), (  7 shl 16) + ( 16), (  8 shl 16) + ( 12), ( -7 shl 16) + ( 21), ( -2 shl 16) + (  3), (-10 shl 16) + ( -4), (-16 shl 16) + ( 15)
+ dd (-10 shl 16) + (  6), (  9 shl 16) + ( -5), ( -7 shl 16) + ( 16), (-12 shl 16) + ( 27), ( -7 shl 16) + ( 15), ( -8 shl 16) + ( 11), ( 16 shl 16) + ( -7), ( -8 shl 16) + (  4)
