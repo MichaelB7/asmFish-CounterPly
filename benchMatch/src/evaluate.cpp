@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2019 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -258,6 +258,8 @@ namespace {
     attackedBy[Us][ALL_PIECES] = attackedBy[Us][KING] | attackedBy[Us][PAWN];
     attackedBy2[Us]            = attackedBy[Us][KING] & attackedBy[Us][PAWN];
 
+    kingRing[Us] = kingAttackersCount[Them] = 0;
+
     // Init our king safety tables only if we are going to use them
     if (pos.non_pawn_material(Them) >= RookValueMg + KnightValueMg)
     {
@@ -274,8 +276,6 @@ namespace {
         kingAttackersCount[Them] = popcount(kingRing[Us] & pe->pawn_attacks(Them));
         kingAttacksCount[Them] = kingAttackersWeight[Them] = 0;
     }
-    else
-        kingRing[Us] = kingAttackersCount[Them] = 0;
   }
 
 
@@ -381,7 +381,7 @@ namespace {
             {
                 File kf = file_of(pos.square<KING>(Us));
                 if ((kf < FILE_E) == (file_of(s) < kf))
-                    score -= (TrappedRook - make_score(mob * 22, 0)) * (1 + !pos.can_castle(Us));
+                    score -= (TrappedRook - make_score(mob * 22, 0)) * (1 + !pos.castling_rights(Us));
             }
         }
 
@@ -412,10 +412,10 @@ namespace {
     Bitboard kingFlank, weak, b, b1, b2, safe, unsafeChecks;
 
     // King shelter and enemy pawns storm
-    Score score = pe->king_safety<Us>(pos, ksq);
+    Score score = pe->king_safety<Us>(pos);
 
     // Find the squares that opponent attacks in our king flank, and the squares
-    // which are attacked twice in that flank but not defended by our pawns.
+    // which are attacked twice in that flank.
     kingFlank = KingFlank[file_of(ksq)];
     b1 = attackedBy[Them][ALL_PIECES] & kingFlank & Camp;
     b2 = b1 & attackedBy2[Them];
@@ -474,7 +474,7 @@ namespace {
                      +  69 * kingAttacksCount[Them]
                      + 185 * popcount(kingRing[Us] & weak)
                      + 150 * popcount(pos.blockers_for_king(Us) | unsafeChecks)
-                     +   tropism*tropism/4
+                     +       tropism * tropism / 4
                      - 873 * !pos.count<QUEEN>(Them)
                      -   6 * mg_value(score) / 8
                      +       mg_value(mobility[Them] - mobility[Us])
@@ -512,7 +512,7 @@ namespace {
     Score score = SCORE_ZERO;
 
     // Non-pawn enemies
-    nonPawnEnemies = pos.pieces(Them) ^ pos.pieces(Them, PAWN);
+    nonPawnEnemies = pos.pieces(Them) & ~pos.pieces(Them, PAWN);
 
     // Squares strongly protected by the enemy, either because they defend the
     // square with a pawn, or because they defend the square twice and we don't.
@@ -552,8 +552,9 @@ namespace {
         if (weak & attackedBy[Us][KING])
             score += ThreatByKing;
 
-        score += Hanging * popcount(weak & (~attackedBy[Them][ALL_PIECES] | (nonPawnEnemies & attackedBy2[Us])));
-
+        b =  ~attackedBy[Them][ALL_PIECES]
+           | (nonPawnEnemies & attackedBy2[Us]);
+        score += Hanging * popcount(weak & b);
     }
 
     // Bonus for restricting their piece moves

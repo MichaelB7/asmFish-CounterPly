@@ -356,7 +356,7 @@ CALL:stop_timer
 echo.
 
 :: Compress the files in .7z format with priority = HIGH
-start /HIGH 7z.exe a -t7z asmFish%CP%_%datestamp%.7z WindowsOS_binaries LinuxOS_binaries MacOS_binaries Matefinder_binaries benchMatch
+start /HIGH 7z.exe a -t7z asmFish%CP%_%datestamp%.7z WindowsOS_binaries LinuxOS_binaries MacOS_binaries Matefinder_binaries benchMatch x86
 pause
 
 goto:eof
