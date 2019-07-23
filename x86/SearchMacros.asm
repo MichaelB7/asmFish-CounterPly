@@ -441,7 +441,7 @@ end if
 		mov   byte[.improving],	al   ; should be 0 or 1
 
 		; Step 8. Futility pruning:	child node (skipped when in check)
-  if (RootNode = 0 & USE_MATEFINDER = 0) | (PvNode = 0 & USE_MATEFINDER	= 1)
+  if (PvNode = 0 & USE_MATEFINDER = 0) | (PvNode = 0 & USE_MATEFINDER	= 1)
 		mov   edx, dword[.depth]
 		mov   ecx, dword[rbp+Pos.sideToMove]
 		cmp   edx, 7*ONE_PLY

@@ -109,7 +109,7 @@ MidgameLimit = 15258
 EndgameLimit = 3915
 
 ; values for evaluation
-Eval_Tempo = 20
+Eval_Tempo = 28
 
 ; values from stats tables
 HistoryStats_Max = 268435456
