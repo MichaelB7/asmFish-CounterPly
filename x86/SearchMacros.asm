@@ -1120,13 +1120,9 @@ end if
 	       test   ecx, ecx
 		 jz   .13done
 		mov   al, byte[.captureOrPromotion]
-	      movzx   ecx, word[rbx+State.npMaterial+2*1]
-		add   esi, ecx
 		 or   al, byte[rbx+State.givesCheck]
 		jnz   .13else
 		lea   ecx, [8*r8+Pawn]
-		cmp   esi, 5000
-		jae   @f
 		cmp   r14d, ecx
 		jne   @f
 		imul   r8d, 56
