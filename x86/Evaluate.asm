@@ -36,12 +36,16 @@ macro EvalInit Us
 	Down	= DELTA_N
 	West	= DELTA_W
 	East	= DELTA_E
+	Left = DELTA_SW
+	Right = DELTA_SE
    else
 	Them	= White
 	Up		= DELTA_N
 	Down	= DELTA_S
 	West	= DELTA_W
 	East	= DELTA_E
+	Left = DELTA_NE
+	Right = DELTA_NW
    end if
 
 
@@ -103,6 +107,15 @@ macro EvalInit Us
 		mov   dword[.ei.kingAttackersWeight+4*Us], eax
 		mov   dword[.ei.kingAdjacentZoneAttacksCount+4*Us], eax
 
+		; & ~double_pawn_attacks_bb<Us>(pos.pieces(Us, PAWN)
+		mov   r11, qword[rbp+Pos.typeBB+8*Them]
+		and   r11, qword[rbp+Pos.typeBB+8*Pawn]
+		mov  r9, r11
+		ShiftBB  Right, r11, rcx
+		ShiftBB  Left, r9, rcx
+		and  r11, r9
+		_andn r8, r11, r8
+
 	@1:
 		mov   qword[.ei.kingRing+8*Them], r8
 		mov   dword[.ei.kingAttackersCount+4*Us], edx
@@ -129,7 +142,7 @@ macro EvalPieces Us, Pt
   local Outpost0, Outpost1, KingAttackWeight
   local MobilityBonus, ProtectorBonus
 
-  local NextPiece, NoPinned, AllDone
+  local NextPiece, NoPinned, NoKingRing, AllDone
   local OutpostElse, OutpostDone, NoBehindPawnBonus
   local NoEnemyPawnBonus, NoOpenFileBonus, NoTrappedByKing
   local SkipQueenPin, QueenPinLoop
@@ -243,19 +256,8 @@ NoPinned:
 		mov   qword[.ei.attackedBy+8*(8*Us+Pt)], rax
 		mov   qword[.ei.attackedBy+8*(8*Us+0)], rdx
 
-		mov  rax, r9
-		and   rax, qword[.ei.kingRing+8*Them]
-		jz @f
-
-; & ~double_pawn_attacks_bb<Them>(pos.pieces(Them, PAWN)
-		mov   r10, qword[rbp+Pos.typeBB+8*Them]
-		and   r10, qword[rbp+Pos.typeBB+8*Pawn]
-		mov  rdx, r10
-		ShiftBB  Left, r10, rcx
-		ShiftBB  Right, rdx, rcx
-		and  r10, rdx
-		_andn rax, r10, rax
-		jz  @f
+		test   r9, qword[.ei.kingRing+8*Them]
+		jz   NoKingRing	; 74.44%
 
 		add   dword[.ei.kingAttackersCount+4*Us], 1
 		add   dword[.ei.kingAttackersWeight+4*Us], KingAttackWeight
@@ -264,7 +266,7 @@ NoPinned:
 		_popcnt   rax, rax, rcx
 		add   dword[.ei.kingAdjacentZoneAttacksCount+4*Us], eax
 
-@@:
+NoKingRing:
 		mov   rax, qword[.ei.mobilityArea+8*Us]
 		and   rax, r9
 
