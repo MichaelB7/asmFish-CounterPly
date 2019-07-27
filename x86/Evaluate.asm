@@ -1185,11 +1185,8 @@ WeakDone:
 ; weak = pos.pieces(Them) & ~stronglyProtected & attackedBy[Us][ALL_PIECES];
 
 ; // Bonus for restricting their piece moves
-		mov  r9, qword[.ei.attackedBy+8*(8*Them+Pawn)]
-		mov  rax, qword[.ei.attackedBy2+8*Them]
-		_andn  r10, r9, AttackedByThem
-		_andn  r10, rax, r10
-		and    r10, AttackedByUs
+		and   r10, AttackedByThem
+		and   r10, AttackedByUs
 		_popcnt  r10, r10, rdx
 		imul  r10d, RestrictedPiece
 		addsub  esi, r10d
