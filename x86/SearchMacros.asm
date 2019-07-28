@@ -281,7 +281,6 @@ end if
 		mov   ecx, dword[rcx+RootMove.pv+4*0]
   end if
 		mov   dword[.ttMove], ecx
-		;mov   dword[.ttValue],	edi
 
 		lea   r8d, [rdi+VALUE_MATE_IN_MAX_PLY]
 	       test   edx, edx
@@ -1629,7 +1628,7 @@ Display	2, "Search returning %i0%n"
 		pop   r15 r14 r13 r12 rdi rsi rbx
 		ret
 .ValueFromTT:
-	      movzx   r8d, byte[rbx+State.ply]
+		movzx   r8d, byte[rbx+State.ply]
 		mov   r9d, edi
 		sar   r9d, 31
 		xor   r8d, r9d
@@ -1643,76 +1642,93 @@ Display	2, "Search returning %i0%n"
 		mov   dword[.moveCount], eax
 		jmp   .MovePickLoop
 
-  if RootNode = 0
+	if RootNode = 0
 
-             calign  8
-.AbortSearch_PlyBigger:
+		calign  8
+		.AbortSearch_PlyBigger:
 		value_draw  rax, dword[.depth], qword[rbp-Thread.rootPos+Thread.nodes]
 		mov  rcx, qword[rbx + State.checkersBB]
-               test  rcx, rcx
-                 jz  .Return
-	       call  Evaluate
+		test  rcx, rcx
+		jz  .Return
+		call  Evaluate
 
-             calign   8
-.AbortSearch_PlySmaller:
+		calign   8
+		.AbortSearch_PlySmaller:
 		value_draw  rax, dword[.depth], qword[rbp-Thread.rootPos+Thread.nodes]
-                jmp  .Return
-  end if
+		jmp  .Return
+	end if
 
-  if PvNode = 0
-	 calign   8
-.ReturnTTValue:
-    ; edi = ttValue
+	if PvNode = 0
+		calign   8
+		.ReturnTTValue:
+		; edi = ttValue
 		mov   r12d,	ecx
 		mov   r13d, dword[.depth]
 		stat_bonus  r10d, rax, r13
-    ; r12d = move
-    ; r13d = depth
-    ; r10d = bonus
+		; r12d = move
+		; r13d = depth
+		; r10d = bonus
 		mov   eax, r12d
 		mov   edx, r12d
 		and   edx, 63
 		shr   eax, 14
-	      movzx   edx, byte[rbp+Pos.board+rdx]
-		 or   dl, byte[_CaptureOrPromotion_or+rax]
+		movzx   edx, byte[rbp+Pos.board+rdx]
+		or   dl, byte[_CaptureOrPromotion_or+rax]
 		and   dl, byte[_CaptureOrPromotion_and+rax]
-    ; dl = capture or promotion
+		; dl = capture or promotion
 		mov   eax, edi
-	       test   ecx, ecx
-		 jz   .Return
-    ; ttMove is	quiet; update move sorting heuristics on TT hit
+		test   ecx, ecx
+		jz   .Return
+
+		; ttMove is quiet; update move sorting heuristics on TT hit
 		cmp   edi, dword[.beta]
-		 jl   .ReturnTTValue_Penalty
+		jl   .ReturnTTValue_Penalty
+
 		mov   eax, dword[rbx-1*sizeof.State+State.currentMove]
 		and   eax, 63
-	      movzx   ecx, byte[rbp+Pos.board+rax]
+		movzx   ecx, byte[rbp+Pos.board+rax]
 		shl   ecx, 6
-		lea   r15d,	[rax+rcx]
-    ; r15d = offset of [piece_on(prevSq),prevSq]
-	       test   dl, dl
+		lea   r15d, [rax+rcx]
+		; r15d = offset of [piece_on(prevSq),prevSq]
+		test   dl, dl
 		jnz   .ReturnTTValue_UpdateCaptureStats
-	UpdateStats   r12d,	0, 0, r11d, r10d, r15
-;		jmp   .ReturnTTValue_UpdateStatsDone
+
+		UpdateStats   r12d, 0, 0, r11d, r10d, r15
+
 .ReturnTTValue_UpdateCaptureStats:
-;UpdateCaptureStats   r12d, 0, 0, r11d,	r10d
 .ReturnTTValue_UpdateStatsDone:
 		add   r13, 1
 		stat_bonus  r10d, rax, r13
 		sub   r13, 1
     ; r10d = penalty
+
 		cmp   dword[rbx-1*sizeof.State+State.moveCount], 1
 		mov   eax, edi
-		jne   .Return
+		je  @1f
+
+		mov  ecx, dword[rbx-1*sizeof.State+State.killers]
+		test  ecx, ecx
+		jz  .Return
+
+		cmp  ecx, dword[rbx-1*sizeof.State+State.currentMove]
+		jne  .Return
+
+	@1:
 		cmp   byte[rbx+State.capturedPiece], 0
+		mov   eax, edi
 		jne   .Return
+
 		mov   r11d, r10d
 		neg   r11d ; negative bonus
 		cmp   r10d, BONUS_MAX
+		mov   eax, edi
 		jae   .Return
+
 		abs_bonus r11d, r10d
 		UpdateCmStats (rbx-1*sizeof.State), r15, r11d, r10d, r8
 		mov   eax, edi
 		jmp   .Return
+
 .ReturnTTValue_Penalty:
 		and   ecx, 64*64-1
 		mov   r8d, dword[rbp+Pos.sideToMove]
@@ -1722,10 +1738,12 @@ Display	2, "Search returning %i0%n"
 		; r8 = offset in history table
 		test   dl, dl
 		jnz   .Return
+
 		mov   r11d, r10d
 		neg   r11d
 		cmp   r10d, BONUS_MAX
 		jae   .Return
+
 		abs_bonus r11d, r10d
 		history_update r8, r11d, r10d
 		mov   r9d, r12d
@@ -1742,6 +1760,7 @@ Display	2, "Search returning %i0%n"
 		mov  eax, edi
 		jmp  .Return
   end if
+
 	 calign   8
 .20ValueToTT:
 	      movzx   edx, byte[rbx+State.ply]
@@ -1751,6 +1770,7 @@ Display	2, "Search returning %i0%n"
 		sub   edx, eax
 		add   edx, edi
 		jmp   .20ValueToTTRet
+
   if RootNode = 0
 	 calign   8
 .CheckDraw_Cold:
