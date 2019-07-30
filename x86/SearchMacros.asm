@@ -1501,7 +1501,6 @@ end if
 .MovePickDone:
     ; Step 20. Check for mate and stalemate
 		mov   eax, dword[rbx-1*sizeof.State+State.currentMove]
-		lea   esi, [rax-1]
 		and   eax, 63
 	      movzx   ecx, byte[rbp+Pos.board+rax]
 		shl   ecx, 6
@@ -1547,8 +1546,6 @@ end if
 		je  @2f
 
 		mov  eax, dword[rbx-1*sizeof.State+State.killers]
-		test  eax, eax
-		jz  .20TTStore
 		cmp  eax, dword[rbx-1*sizeof.State+State.currentMove]
 		jne  .20TTStore
 
@@ -1578,9 +1575,8 @@ end if
 	if PvNode = 1
 		jmp @f
 	else
-		lea   edx, [r13-3*ONE_PLY]
-		or   edx, esi
-		js   .20TTStore
+		cmp  r13d, 3*ONE_PLY
+		jb  .20TTStore
 	end if
 
 	@@:
@@ -1707,9 +1703,6 @@ Display	2, "Search returning %i0%n"
 		je  @1f
 
 		mov  ecx, dword[rbx-1*sizeof.State+State.killers]
-		test  ecx, ecx
-		jz  .Return
-
 		cmp  ecx, dword[rbx-1*sizeof.State+State.currentMove]
 		jne  .Return
 
