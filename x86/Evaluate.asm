@@ -61,9 +61,6 @@ macro EvalInit Us
 		xor    r8, r8
 		xor    edx, edx
 
-		cmp   ecx, RookValueMg + KnightValueMg
-		jb    @1f
-
 		; if (relative_rank(Us, pos.square<KING>) == RANK_1)
 		if Them = White
 			cmp   eax, SQ_A2
@@ -548,11 +545,6 @@ SetTropism:
 
 	tropism = r10
 
-		mov   edi, dword[.ei.kingAttackersCount+4*Them]
-		movzx ecx, byte[rbp+Pos.pieceEnd+(8*Them+Queen)]
-		and   ecx, 15
-		add   ecx, edi
-
 		mov   r8, qword[.ei.attackedBy2+8*Us]
 		_andn r8, r8, AttackedByThem
 		mov   r9, AttackedByUs
@@ -563,9 +555,8 @@ SetTropism:
 
 		mov   r9, qword[.ei.kingRing+8*Us]
 		and   r9, r8
-		cmp   ecx, 2
 
-		jb   AllDone
+		mov   edi, dword[.ei.kingAttackersCount+4*Them]
 		imul  edi, dword[.ei.kingAttackersWeight+4*Them]
 		imul  eax, dword[.ei.kingAdjacentZoneAttacksCount+4*Them], 69
 		add   edi, eax
