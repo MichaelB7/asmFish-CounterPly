@@ -1,2 +1,2 @@
 # asmFish-CounterPly
-another for of asmFish
+another fork of asmFish
