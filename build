@@ -1,0 +1,141 @@
+#!/bin/csh
+
+### This cshell script builds asmfish on a macOS host for windows, linux android and macOS operating systems.  Simply type "Build" at the command line .  Takes about 1 minute to run on my machine and then zips the binaries into a zip file.
+
+set echo off
+set start_time=`date +%s`
+echo $start_time
+
+set include=x86\include\
+set dat = `date +"%m%d%y"`
+set popcnt = "asmfish-popcnt-$dat"
+set bmi1 = "asmfish-bmi1-$dat"
+set bmi2 = "asmfish-bmi2-$dat"
+set base = "asmfish-base-$dat"
+set arm = "armfish-V8-$dat"
+set OS1 = "X"   ### macOS
+set OS2 = "W"   ### Windows
+set OS3 = "L"   ###Linux
+set exe = ".exe" ###  suffix used for windows binaries
+
+fasmg -p 1000 "x86/fish.asm" "$base-$OS1" -e 1000 -i "VERSION_OS='X'" -i "VERSION_POST = 'base'" &
+fasmg -p 1000 "x86/fish.asm" "$popcnt-$OS1" -e 1000 -i "VERSION_OS='X'" -i "VERSION_POST = 'popcnt'" &
+fasmg -p 1000 "x86/fish.asm" "$bmi1-$OS1" -e 1000 -i "VERSION_OS='X'" -i "VERSION_POST = 'bmi1'" &
+fasmg -p 1000 "x86/fish.asm" "$bmi2-$OS1" -e 1000 -i "VERSION_OS='X'" -i "VERSION_POST = 'bmi2'" &
+fasmg -p 1000 "x86\fish.asm" "$base-$OS2$exe" -e 1000 -i "VERSION_OS='W'" -i "PEDANTIC = 1" -i "VERSION_POST = 'base'" &
+fasmg -p 1000 "x86\fish.asm" "$popcnt-$OS2$exe" -e 1000 -i "VERSION_OS='W'" -i "PEDANTIC = 1" -i "VERSION_POST = 'popcnt'" &
+fasmg -p 1000 "x86\fish.asm" "$bmi1-$OS2$exe" -e 1000 -i "VERSION_OS='W'" -i "PEDANTIC = 1" -i "VERSION_POST = 'bmi1'" &
+fasmg -p 1000 "x86\fish.asm" "$bmi2-$OS2$exe" -e 1000 -i "VERSION_OS='W'" -i "PEDANTIC = 1" -i "VERSION_POST = 'bmi2'" &
+fasmg -p 1000 "x86\fish.asm" "$base-$OS3" -e 1000 -i "VERSION_OS='L'" -i "PEDANTIC = 1" -i "VERSION_POST = 'base'" &
+fasmg -p 1000 "x86\fish.asm" "$popcnt-$OS3" -e 1000 -i "VERSION_OS='L'" -i "PEDANTIC = 1" -i "VERSION_POST = 'popcnt'" &
+fasmg -p 1000 "x86\fish.asm" "$bmi1-$OS3" -e 1000 -i "VERSION_OS='L'" -i "PEDANTIC = 1" -i "VERSION_POST = 'bmi1'" &
+fasmg -p 1000 "x86\fish.asm" "$bmi2-$OS3" -e 1000 -i "VERSION_OS='L'" -i "PEDANTIC = 1" -i "VERSION_POST = 'bmi2'" &
+fasmg -p 1000 "arm\fish.arm" "$arm-$OS3" -e 1000 -i "VERSION_OS='L'" -i "PEDANTIC = 1" -i "VERSION_POST = 'v8'" &
+wait
+chmod 755 $base-$OS1 &
+chmod 755 $popcnt-$OS1 &
+chmod 755 $bmi1-$OS1 &
+chmod 755 $bmi2-$OS1 &
+chmod 755 $base-$OS2$exe &
+chmod 755 $popcnt-$OS2$exe &
+chmod 755 $bmi1-$OS2$exe &
+chmod 755 $bmi2-$OS2$exe &
+chmod 755 $popcnt-$OS3 &
+chmod 755 $base-$OS3 &
+chmod 755 $bmi1-$OS3 &
+chmod 755 $bmi2-$OS3 &
+chmod 755 $arm-$OS3 &
+wait
+zip zasmfish-$dat-$OS1.zip $base-$OS1 $popcnt-$OS1 $bmi1-$OS1 $bmi2-$OS1 &
+zip zasmfish-$dat-$OS2.zip $base-$OS2$exe $popcnt-$OS2$exe $bmi1-$OS2$exe $bmi2-$OS2$exe &
+zip zasmfish-$dat-$OS3.zip $base-$OS3 $popcnt-$OS3 $bmi1-$OS3 $bmi2-$OS3 $arm-$OS3 &
+wait
+mv zasmfish-$dat-$OS1.zip macOS_binaries &
+mv zasmfish-$dat-$OS2.zip WindowsOS_binaries &
+mv zasmfish-$dat-$OS3.zip LinuxOS_binaries &
+rm $base-$OS1 $popcnt-$OS1 $bmi1-$OS1 $bmi2-$OS1 &  
+rm $base-$OS2 $exe $popcnt-$OS2$exe $bmi1-$OS2$exe $bmi2-$OS2$exe &
+rm $base-$OS3 $popcnt-$OS3 $bmi1-$OS3 $bmi2-$OS3 $arm-$OS3 &
+wait
+fasmg -p 1000 "x86/fish.asm" "$base-$OS1" -e 1000 -i "VERSION_OS='X'" -i "VERSION_POST = 'base'" -i "USE_MATEFINDER = 1" &
+fasmg -p 1000 "x86/fish.asm" "$popcnt-$OS1" -e 1000 -i "VERSION_OS='X'" -i "VERSION_POST = 'popcnt'" -i "USE_MATEFINDER = 1" &
+fasmg -p 1000 "x86/fish.asm" "$bmi1-$OS1" -e 1000 -i "VERSION_OS='X'" -i "VERSION_POST = 'bmi1'" -i "USE_MATEFINDER = 1" &
+fasmg -p 1000 "x86/fish.asm" "$bmi2-$OS1" -e 1000 -i "VERSION_OS='X'" -i "VERSION_POST = 'bmi2'" -i "USE_MATEFINDER = 1" &
+fasmg -p 1000 "x86\fish.asm" "$base-$OS2$exe" -e 1000 -i "VERSION_OS='W'" -i "PEDANTIC = 1" -i "VERSION_POST = 'base'" -i "USE_MATEFINDER = 1" &
+fasmg -p 1000 "x86\fish.asm" "$popcnt-$OS2$exe" -e 1000 -i "VERSION_OS='W'" -i "PEDANTIC = 1" -i "VERSION_POST = 'popcnt'" -i "USE_MATEFINDER = 1" &
+fasmg -p 1000 "x86\fish.asm" "$bmi1-$OS2$exe" -e 1000 -i "VERSION_OS='W'" -i "PEDANTIC = 1" -i "VERSION_POST = 'bmi1'" -i "USE_MATEFINDER = 1" &
+fasmg -p 1000 "x86\fish.asm" "$bmi2-$OS2$exe" -e 1000 -i "VERSION_OS='W'" -i "PEDANTIC = 1" -i "VERSION_POST = 'bmi2'" -i "USE_MATEFINDER = 1" &
+fasmg -p 1000 "x86\fish.asm" "$base-$OS3" -e 1000 -i "VERSION_OS='L'" -i "PEDANTIC = 1" -i "VERSION_POST = 'base'" -i "USE_MATEFINDER = 1" &
+fasmg -p 1000 "x86\fish.asm" "$popcnt-$OS3" -e 1000 -i "VERSION_OS='L'" -i "PEDANTIC = 1" -i "VERSION_POST = 'popcnt'" -i "USE_MATEFINDER = 1" &
+fasmg -p 1000 "x86\fish.asm" "$bmi1-$OS3" -e 1000 -i "VERSION_OS='L'" -i "PEDANTIC = 1" -i "VERSION_POST = 'bmi1'" -i "USE_MATEFINDER = 1" &
+fasmg -p 1000 "x86\fish.asm" "$bmi2-$OS3" -e 1000 -i "VERSION_OS='L'" -i "PEDANTIC = 1" -i "VERSION_POST = 'bmi2'" -i "USE_MATEFINDER = 1" &
+fasmg -p 1000 "arm\fish.arm" "$arm-$OS3" -e 1000 -i "VERSION_OS='L'" -i "PEDANTIC = 1" -i "VERSION_POST = 'v8'" -i "USE_MATEFINDER = 1" &
+wait
+chmod 755 $base-$OS1 &
+chmod 755 $popcnt-$OS1 &
+chmod 755 $bmi1-$OS1 &
+chmod 755 $bmi2-$OS1 &
+chmod 755 $base-$OS2$exe &
+chmod 755 $popcnt-$OS2$exe &
+chmod 755 $bmi1-$OS2$exe &
+chmod 755 $bmi2-$OS2$exe &
+chmod 755 $popcnt-$OS3 &
+chmod 755 $base-$OS3 &
+chmod 755 $bmi1-$OS3 &
+chmod 755 $bmi2-$OS3 &
+chmod 755 $arm-$OS3 &
+wait
+zip zasmfish-$dat-$OS1-MF.zip $base-$OS1 $popcnt-$OS1 $bmi1-$OS1 $bmi2-$OS1 &
+zip zasmfish-$dat-$OS2-MF.zip $base-$OS2$exe $popcnt-$OS2$exe $bmi1-$OS2$exe $bmi2-$OS2$exe &
+zip zasmfish-$dat-$OS3-MF.zip $base-$OS3 $popcnt-$OS3 $bmi1-$OS3 $bmi2-$OS3 $arm-$OS3 &
+wait
+mv zasmfish-$dat-$OS1-MF.zip zasmfish-$dat-$OS2-MF.zip zasmfish-$dat-$OS3-MF.zip Matefinder_binaries &
+rm $base-$OS1 $popcnt-$OS1 $bmi1-$OS1 $bmi2-$OS1 &
+rm $base-$OS2$exe $popcnt-$OS2$exe $bmi1-$OS2$exe $bmi2-$OS2$exe &
+rm $base-$OS3 $popcnt-$OS3 $bmi1-$OS3 $bmi2-$OS3 $arm-$OS3 &
+wait
+fasmg -p 1000 "x86/fish.asm" "$base-$OS1" -e 1000 -i "VERSION_OS='X'" -i "VERSION_POST = 'base'" -i "USE_VARIETY = 1" &
+fasmg -p 1000 "x86/fish.asm" "$popcnt-$OS1" -e 1000 -i "VERSION_OS='X'" -i "VERSION_POST = 'popcnt'" -i "USE_VARIETY = 1" &
+fasmg -p 1000 "x86/fish.asm" "$bmi1-$OS1" -e 1000 -i "VERSION_OS='X'" -i "VERSION_POST = 'bmi1'" -i "USE_VARIETY = 1" &
+fasmg -p 1000 "x86/fish.asm" "$bmi2-$OS1" -e 1000 -i "VERSION_OS='X'" -i "VERSION_POST = 'bmi2'" -i "USE_VARIETY = 1" &
+fasmg -p 1000 "x86\fish.asm" "$base-$OS2$exe" -e 1000 -i "VERSION_OS='W'" -i "PEDANTIC = 1" -i "VERSION_POST = 'base'" -i "USE_VARIETY = 1" &
+fasmg -p 1000 "x86\fish.asm" "$popcnt-$OS2$exe" -e 1000 -i "VERSION_OS='W'" -i "PEDANTIC = 1" -i "VERSION_POST = 'popcnt'" -i "USE_VARIETY = 1" &
+fasmg -p 1000 "x86\fish.asm" "$bmi1-$OS2$exe" -e 1000 -i "VERSION_OS='W'" -i "PEDANTIC = 1" -i "VERSION_POST = 'bmi1'" -i "USE_VARIETY = 1" &
+fasmg -p 1000 "x86\fish.asm" "$bmi2-$OS2$exe" -e 1000 -i "VERSION_OS='W'" -i "PEDANTIC = 1" -i "VERSION_POST = 'bmi2'" -i "USE_VARIETY = 1" &
+fasmg -p 1000 "x86\fish.asm" "$base-$OS3" -e 1000 -i "VERSION_OS='L'" -i "PEDANTIC = 1" -i "VERSION_POST = 'base'" -i "USE_VARIETY = 1" &
+fasmg -p 1000 "x86\fish.asm" "$popcnt-$OS3" -e 1000 -i "VERSION_OS='L'" -i "PEDANTIC = 1" -i "VERSION_POST = 'popcnt'" -i "USE_VARIETY = 1" &
+fasmg -p 1000 "x86\fish.asm" "$bmi1-$OS3" -e 1000 -i "VERSION_OS='L'" -i "PEDANTIC = 1" -i "VERSION_POST = 'bmi1'" -i "USE_VARIETY = 1" &
+fasmg -p 1000 "x86\fish.asm" "$bmi2-$OS3" -e 1000 -i "VERSION_OS='L'" -i "PEDANTIC = 1" -i "VERSION_POST = 'bmi2'" -i "USE_VARIETY = 1" &
+fasmg -p 1000 "arm\fish.arm" "$arm-$OS3" -e 1000 -i "VERSION_OS='L'" -i "PEDANTIC = 1" -i "VERSION_POST = 'v8'" -i "USE_VARIETY = 1" &
+wait
+chmod 755 $base-$OS1 &
+chmod 755 $popcnt-$OS1 &
+chmod 755 $bmi1-$OS1 &
+chmod 755 $bmi2-$OS1 &
+chmod 755 $base-$OS2$exe &
+chmod 755 $popcnt-$OS2$exe &
+chmod 755 $bmi1-$OS2$exe &
+chmod 755 $bmi2-$OS2$exe &
+chmod 755 $popcnt-$OS3 &
+chmod 755 $base-$OS3 &
+chmod 755 $bmi1-$OS3 &
+chmod 755 $bmi2-$OS3 &
+chmod 755 $arm-$OS3 &
+wait
+zip zasmfish-$dat-$OS1-V.zip $base-$OS1 $popcnt-$OS1 $bmi1-$OS1 $bmi2-$OS1 & 
+zip zasmfish-$dat-$OS2-V.zip $base-$OS2$exe $popcnt-$OS2$exe $bmi1-$OS2$exe $bmi2-$OS2$exe &
+zip zasmfish-$dat-$OS3-V.zip $base-$OS3 $popcnt-$OS3 $bmi1-$OS3 $bmi2-$OS3 $arm-$OS3 &
+wait
+mv zasmfish-$dat-$OS1-V.zip zasmfish-$dat-$OS2-V.zip zasmfish-$dat-$OS3-V.zip VARIETY_binaries &
+rm $base-$OS1 $popcnt-$OS1 $bmi1-$OS1 $bmi2-$OS1 &
+rm $base-$OS2$exe $popcnt-$OS2$exe $bmi1-$OS2$exe $bmi2-$OS2$exe &
+rm $base-$OS3 $popcnt-$OS3 $bmi1-$OS3 $bmi2-$OS3 $arm-$OS3 &
+
+set end_time = `date +%s`
+echo $end_time 
+echo execution time was `expr $end_time - $start_time` s.
+
+
+
+
+
